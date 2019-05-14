@@ -3,11 +3,14 @@
 #include <PS4BT.h>
 #include "PS4_HEAD.h"
 
-#define MaxPWM 45
+#define MaxPWM 40
 
-#include "MPU6050.h"
-#define gyroBootLED 33
-MPU6050 myIMU(gyroBootLED);
+//#include "MPU6050.h"
+//#define gyroBootLED 33
+//MPU6050 myIMU(gyroBootLED);
+
+#include "MPU9250.h"
+MPU9250 imu;
 
 #include "OmniKinematics3WD.h"
 OmniKinematics3WD kinematics(MaxPWM);
@@ -49,7 +52,7 @@ void setup()
     setPwmFrequencyMEGA2560(44, 1);
     setPwmFrequencyMEGA2560(45, 1);
     setPwmFrequencyMEGA2560(46, 1);
-    myIMU.setup(); //it takes a while
+    imu.Setup(); //it takes a while
     kinematics.setMaxPWM(MaxPWM);
     pinMode(controllerStatsLED, OUTPUT);
 }
@@ -66,7 +69,9 @@ void loop()
         {
             initialConnect = false;
             if (!REVERSE)
-                myIMU.setYaw(0);
+            {
+                imu.setYaw(0);
+            }
         }
 
         if (PUSH_RIGHT)
@@ -95,20 +100,20 @@ void loop()
             outputY = 0;
         }
 
-        myIMU.updateIMU();
+        //myIMU.updateIMU();
         if (PUSH_R2)
         {
             outputYaw = MaxPWM;
-            myIMU.setYaw(0);
+            imu.setYaw(0);
         }
         else if (PUSH_L2)
         {
             outputYaw = -MaxPWM;
-            myIMU.setYaw(0);
+            imu.setYaw(0);
         }
         else
         {
-            double errorYaw = -myIMU.getYaw();
+            double errorYaw = -imu.gyro_Yaw();
             outputYaw = errorYaw * 5;
             outputYaw = constrain(outputYaw, -MaxPWM, MaxPWM);
             if (-5 < outputYaw && outputYaw < 5)
