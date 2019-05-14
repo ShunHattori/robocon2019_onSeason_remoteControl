@@ -3,16 +3,22 @@
 #include <PS4BT.h>
 #include "PS4_HEAD.h"
 
-#define MaxPWM 40
+//#define USING_6DOF_IMU
+#ifdef USING_6DOF_IMU
+#include "MPU6050.h"
+#define IMUBootLED 33
+MPU6050 myIMU(IMUBootLED);
+#endif //USING_6DOF_IMU
 
-//#include "MPU6050.h"
-//#define gyroBootLED 33
-//MPU6050 myIMU(gyroBootLED);
-
+#define USING_9DOF_IMU
+#ifdef USING_9DOF_IMU
 #include "MPU9250.h"
-MPU9250 imu;
+#define IMUBootLED 33
+MPU9250 myIMU(IMUBootLED);
+#endif //USING_9DOF_IMU
 
 #include "OmniKinematics3WD.h"
+#define MaxPWM 40
 OmniKinematics3WD kinematics(MaxPWM);
 
 #include "MotorDriverAdapter3WD.h"
@@ -33,46 +39,48 @@ BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
 void setup()
-{
-    // put your setup code here, to run once:
+{ // put your setup code here, to run once:
+
     Serial.begin(115200);
-    while (!Serial)
-        ;
-    if (Usb.Init() == -1)
+    while (!Serial) //waiting for opening hardware Serial port 0
+    {
+    }
+    if (Usb.Init() == -1) //initialize USB device
     {
         Serial.print(F("\nArduino hasn't attached USB_HOST_SHIELD.\n"));
         while (1)
-            ;
+        {
+        }
     }
     Serial.print(F("\nUSB_HOST_SHIELD detected, Success opening Serial port.\n"));
 
-    setPwmFrequencyMEGA2560(5, 1);
+    setPwmFrequencyMEGA2560(5, 1); //initialize PWM timer Pre-Scaler
     setPwmFrequencyMEGA2560(6, 1);
     setPwmFrequencyMEGA2560(11, 1);
     setPwmFrequencyMEGA2560(44, 1);
     setPwmFrequencyMEGA2560(45, 1);
     setPwmFrequencyMEGA2560(46, 1);
-    imu.Setup(); //it takes a while
-    kinematics.setMaxPWM(MaxPWM);
-    pinMode(controllerStatsLED, OUTPUT);
+
+    myIMU.Setup();                       //initialize 9-DOF IMU sensor and calclating bias
+    kinematics.setMaxPWM(MaxPWM);        //set 3wheel direction omni kinematics MAX PWM LIMIT
+    pinMode(controllerStatsLED, OUTPUT); //pinmode setup(PS4 Dual Shock Controller stats LED)
 }
 
 void loop()
-{
+{ // put your main code here, to run repeatedly:
 
-    Usb.Task();
-    // put your main code here, to run repeatedly:
+    Usb.Task(); //running USB tasks
     if (PS4.connected())
     {
         digitalWrite(controllerStatsLED, HIGH);
-        if (initialConnect)
+        /*if (initialConnect)
         {
             initialConnect = false;
             if (!REVERSE)
             {
-                imu.setYaw(0);
+                myIMU.setYaw(0);
             }
-        }
+        }*/
 
         if (PUSH_RIGHT)
         {
@@ -100,30 +108,29 @@ void loop()
             outputY = 0;
         }
 
-        //myIMU.updateIMU();
         if (PUSH_R2)
         {
-            outputYaw = MaxPWM;
-            imu.setYaw(0);
+            outputYaw = MaxPWM / 2;
         }
         else if (PUSH_L2)
         {
-            outputYaw = -MaxPWM;
-            imu.setYaw(0);
+            outputYaw = -MaxPWM / 2;
         }
         else
         {
-            double errorYaw = -imu.gyro_Yaw();
-            outputYaw = errorYaw * 5;
+            outputYaw = 0;
+            //double errorYaw = -myIMU.gyro_Yaw();
+            /*outputYaw = errorYaw * 5;
             outputYaw = constrain(outputYaw, -MaxPWM, MaxPWM);
             if (-5 < outputYaw && outputYaw < 5)
             {
                 outputYaw = 0;
             }
-            outputX = (outputX * cos(errorYaw * DEG_TO_RAD)) + (outputY * sin(errorYaw * DEG_TO_RAD));
-            outputY = (outputX * sin(errorYaw * DEG_TO_RAD)) + (outputY * cos(errorYaw * DEG_TO_RAD));
+            //outputX = (outputX * cos(errorYaw * DEG_TO_RAD)) + (outputY * sin(errorYaw * DEG_TO_RAD));
+            //outputY = (outputX * sin(errorYaw * DEG_TO_RAD)) + (outputY * cos(errorYaw * DEG_TO_RAD));*/
         }
-        kinematics.getOutput(outputX, outputY, outputYaw, motorOutput);
+
+        kinematics.getOutput(outputX, outputY, outputYaw, -myIMU.getYaw(), motorOutput);
         driveWheel.apply(motorOutput);
 
         if (PS4.getButtonPress(PS))
@@ -131,17 +138,17 @@ void loop()
             if (CLICK_SHARE)
             {
                 PS4.disconnect();
-                digitalWrite(controllerStatsLED, LOW);
-                initialConnect = true;
-                kinematics.getOutput(0, 0, 0, motorOutput);
+                digitalWrite(controllerStatsLED, LOW); //set controller-LED OFF
+                initialConnect = true;                 //set a flag for the next connect
+                kinematics.getOutput(0, 0, 0, 0, motorOutput);
                 driveWheel.apply(motorOutput);
             }
         }
     }
     else
-    {
-        kinematics.getOutput(0, 0, 0, motorOutput);
-        driveWheel.apply(motorOutput);
+    {                                                  //apply to motor driver stop by disconnecting PS4 Controller
+        kinematics.getOutput(0, 0, 0, 0, motorOutput); //calculate PWMs from 3-DOF vectors by kinematics
+        driveWheel.apply(motorOutput);                 //apply PWMs to motor drivers
     }
 }
 

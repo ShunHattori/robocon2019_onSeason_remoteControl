@@ -26,9 +26,10 @@ public:
     *   param:  x,y,yaw方向の移動量(int) 駆動輪数に応じたint配列
     *   return: none(引数に代入)
     */
-  void getOutput(int x, int y, int yaw, int pwm[]);
+  void getOutput(int x, int y, int yaw, float yawAngle, int pwm[]);
 
 private:
   int XVector, YVector, YawVector;
+  float YawAngle, userBias;
   int maxAllocateOutput;
 };

@@ -7,6 +7,9 @@
 class MPU9250
 {
 public:
+  MPU9250(int pin){
+    pinMode(pin,OUTPUT);
+  }
   void Setup();                                                            //センサーの設定＋オフセット値の取得
   void read_accel(double *accel_roll, double *accel_pitch);                //指定したアドレスに加速度センサから算出したroll軸,pitch軸の回転角を返す
   void read_gyro(double *gyro_roll, double *gyro_pitch, double *gyro_yaw); //指定したアドレスにジャイロセンサから算出した各軸の回転角を返す
@@ -16,8 +19,8 @@ public:
   double compass_Yaw();                                                    //地磁気センサから算出したYaw軸の回転角を返す
   double getYaw()
   {
-    gyro_yaw = gyro_Yaw();
-    compass_angle = compass_Yaw();
+    //gyro_yaw = gyro_Yaw();
+    //compass_angle = compass_Yaw();
     //yaw = 0.9 * gyro_yaw + 0.1 * compass_angle;
     yaw = gyro_Yaw();
     return yaw - userOffset;
