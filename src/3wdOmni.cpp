@@ -18,8 +18,8 @@ MPU9250 myIMU(IMUBootLED);
 #endif //USING_9DOF_IMU
 
 #include "OmniKinematics3WD.h"
-#define MaxPWM 40
-OmniKinematics3WD kinematics(MaxPWM);
+#define MaxPWM 70
+OmniKinematics3WD kinematics(MaxPWM * 2);
 
 #include "MotorDriverAdapter3WD.h"
 MotorDriverAdapter3WD driveWheel(44, 46, 5, 6, 8, 7);
@@ -110,24 +110,15 @@ void loop()
 
         if (PUSH_R2)
         {
-            outputYaw = MaxPWM / 2;
+            outputYaw = MaxPWM / 1.5;
         }
         else if (PUSH_L2)
         {
-            outputYaw = -MaxPWM / 2;
+            outputYaw = -MaxPWM / 1.5;
         }
         else
         {
             outputYaw = 0;
-            //double errorYaw = -myIMU.gyro_Yaw();
-            /*outputYaw = errorYaw * 5;
-            outputYaw = constrain(outputYaw, -MaxPWM, MaxPWM);
-            if (-5 < outputYaw && outputYaw < 5)
-            {
-                outputYaw = 0;
-            }
-            //outputX = (outputX * cos(errorYaw * DEG_TO_RAD)) + (outputY * sin(errorYaw * DEG_TO_RAD));
-            //outputY = (outputX * sin(errorYaw * DEG_TO_RAD)) + (outputY * cos(errorYaw * DEG_TO_RAD));*/
         }
 
         kinematics.getOutput(outputX, outputY, outputYaw, -myIMU.getYaw(), motorOutput);
