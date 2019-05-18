@@ -24,7 +24,7 @@ void MotorDriverAdapter3WD::apply(int pwm[3])
 {
     for (int i = 0; i < 2; i++)
     {
-        pwm[i] = RCconstant * prevPWM[i] + (1 - RCconstant) * pwm[i];
+        duty[i] = RCconstant * prevPWM[i] + (1 - RCconstant) * pwm[i];
         prevPWM[i] = pwm[i];
     }
 

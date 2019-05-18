@@ -2,6 +2,8 @@
 #include <Wire.h>
 #include <PS4BT.h>
 #include "PS4_HEAD.h"
+#include "SoftwareSerial.h"
+SoftwareSerial Nucleo(22, 23);
 
 //#define USING_6DOF_IMU
 #ifdef USING_6DOF_IMU
@@ -40,7 +42,7 @@ PS4BT PS4(&Btd);
 
 void setup()
 { // put your setup code here, to run once:
-
+    Nucleo.begin(9600);
     Serial.begin(115200);
     while (!Serial) //waiting for opening hardware Serial port 0
     {
@@ -72,6 +74,10 @@ void loop()
     Usb.Task(); //running USB tasks
     if (PS4.connected())
     {
+        static uint8_t redElement = 255;
+        static uint8_t greenElement = 0;
+        static uint8_t blueElement = 0;
+        PS4.setLed(redElement, greenElement, blueElement);
         digitalWrite(controllerStatsLED, HIGH);
         /*if (initialConnect)
         {
@@ -81,8 +87,56 @@ void loop()
                 myIMU.setYaw(0);
             }
         }*/
-
-        if (PUSH_RIGHT)
+        outputX = (PS4.getAnalogHat(LeftHatX) - 127) * 0.5;
+        if (-3.5 < outputX && outputX < 3.5)
+        {
+            outputX = 0;
+        }
+        outputY = (PS4.getAnalogHat(LeftHatY) - 127) * 0.5;
+        if (-3.5 < outputY && outputY < 3.5)
+        {
+            outputY = 0;
+        }
+        outputYaw = (PS4.getAnalogButton(L2) - PS4.getAnalogButton(R2)) * 0.12;
+        if (CLICK_UP)
+        {
+            Nucleo.write('a');
+        }
+        else if (CLICK_DOWN)
+        {
+            Nucleo.write('b');
+        }
+        else if (CLICK_RIGHT)
+        {
+            Nucleo.write('c');
+        }
+        else if (CLICK_LEFT)
+        {
+            Nucleo.write('d');
+        }
+        if (CLICK_CIRCLE)
+        {
+            Nucleo.write('e');
+        }
+        /*else if(CLICK_CROSS){
+                        Nucleo.write('d');
+        }*/
+        if (PUSH_TRIANGLE)
+        {
+            analogWrite(11, 32);
+            analogWrite(12, 0);
+        }
+        else if (PUSH_SQUARE)
+        {
+            analogWrite(11, 0);
+            analogWrite(12, 32);
+        }
+        else
+        {
+            analogWrite(11, 0);
+            analogWrite(12, 0);
+        }
+        /*if (PUSH_RIGHT)
         {
             outputX = -MaxPWM;
             outputY = 0;
@@ -119,9 +173,9 @@ void loop()
         else
         {
             outputYaw = 0;
-        }
+        }*/
 
-        kinematics.getOutput(outputX, outputY, outputYaw, -myIMU.getYaw(), motorOutput);
+        kinematics.getOutput(-outputX, outputY, outputYaw, myIMU.getYaw(), motorOutput);
         driveWheel.apply(motorOutput);
 
         if (PS4.getButtonPress(PS))
