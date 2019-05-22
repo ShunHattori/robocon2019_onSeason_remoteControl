@@ -23,6 +23,6 @@ private:
   uint8_t FCWPin, FCCWPin, BRCWPin, BRCCWPin, BLCWPin, BLCCWPin;
   float duty[3];
 
-  const float RCconstant = 0.80;
+  const float RCconstant = 0.90;
   float prevPWM[3];
 };
