@@ -20,8 +20,8 @@ MPU9250 myIMU(IMUBootLED);
 #endif //USING_9DOF_IMU
 
 #include "OmniKinematics3WD.h"
-#define MaxPWM 70
-OmniKinematics3WD kinematics(MaxPWM * 2);
+#define MaxPWM 200
+OmniKinematics3WD kinematics(MaxPWM);
 
 #include "MotorDriverAdapter3WD.h"
 MotorDriverAdapter3WD driveWheel(44, 46, 5, 6, 8, 7);
@@ -64,7 +64,7 @@ void setup()
     setPwmFrequencyMEGA2560(46, 1);
 
     myIMU.Setup();                       //initialize 9-DOF IMU sensor and calclating bias
-    kinematics.setMaxPWM(MaxPWM);        //set 3wheel direction omni kinematics MAX PWM LIMIT
+    //kinematics.setMaxPWM(MaxPWM);        //set 3wheel direction omni kinematics MAX PWM LIMIT
     pinMode(controllerStatsLED, OUTPUT); //pinmode setup(PS4 Dual Shock Controller stats LED)
 }
 
@@ -87,17 +87,17 @@ void loop()
                 myIMU.setYaw(0);
             }
         }*/
-        outputX = (PS4.getAnalogHat(LeftHatX) - 127) * 0.5;
+        outputX = (PS4.getAnalogHat(LeftHatX) - 127);
         if (-3.5 < outputX && outputX < 3.5)
         {
             outputX = 0;
         }
-        outputY = (PS4.getAnalogHat(LeftHatY) - 127) * 0.5;
+        outputY = (PS4.getAnalogHat(LeftHatY) - 127);
         if (-3.5 < outputY && outputY < 3.5)
         {
             outputY = 0;
         }
-        outputYaw = (PS4.getAnalogButton(L2) - PS4.getAnalogButton(R2)) * 0.12;
+        outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.12;
         if (CLICK_UP)
         {
             Nucleo.write('a');
@@ -185,15 +185,15 @@ void loop()
                 PS4.disconnect();
                 digitalWrite(controllerStatsLED, LOW); //set controller-LED OFF
                 initialConnect = true;                 //set a flag for the next connect
-                kinematics.getOutput(0, 0, 0, 0, motorOutput);
-                driveWheel.apply(motorOutput);
+                //kinematics.getOutput(0, 0, 0, 0, motorOutput);
+                //driveWheel.apply(motorOutput);
             }
         }
     }
     else
     {                                                  //apply to motor driver stop by disconnecting PS4 Controller
-        kinematics.getOutput(0, 0, 0, 0, motorOutput); //calculate PWMs from 3-DOF vectors by kinematics
-        driveWheel.apply(motorOutput);                 //apply PWMs to motor drivers
+        //kinematics.getOutput(0, 0, 0, 0, motorOutput); //calculate PWMs from 3-DOF vectors by kinematics
+        //driveWheel.apply(motorOutput);                 //apply PWMs to motor drivers
     }
 }
 

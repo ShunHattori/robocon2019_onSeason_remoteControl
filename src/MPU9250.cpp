@@ -191,8 +191,8 @@ double MPU9250::gyro_Yaw()
   dps_gz = (double)gz / 131;
   if (!(dps_gz - offset_gz < 1 && dps_gz - offset_gz > -1))
     yaw += (dps_gz - offset_gz) * elapsed_time * 0.001;
-
-  if (yaw > 180)
+  return yaw;
+  /*if (yaw > 180)
   {
     yaw_angle = -180 + (yaw - 180);
     if (yaw > 360)
@@ -206,7 +206,7 @@ double MPU9250::gyro_Yaw()
   }
   else
     yaw_angle = yaw;
-  return yaw_angle;
+  return yaw_angle;*/
 }
 
 void MPU9250::read_compass(double *MX, double *MY, double *MZ)

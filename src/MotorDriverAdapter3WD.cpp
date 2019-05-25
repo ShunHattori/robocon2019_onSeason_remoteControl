@@ -22,7 +22,7 @@ MotorDriverAdapter3WD::MotorDriverAdapter3WD(uint8_t Fcw, uint8_t Fccw, uint8_t 
 
 void MotorDriverAdapter3WD::apply(int pwm[3])
 {
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         duty[i] = RCconstant * prevPWM[i] + (1 - RCconstant) * pwm[i];
         prevPWM[i] = duty[i];
