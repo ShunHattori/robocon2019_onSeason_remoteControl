@@ -30,6 +30,17 @@ MotorDriverAdapter3WD driveWheel(44, 46, 5, 6, 8, 7);
 
 #define controllerStatsLED 35
 
+#define CONTROLLER_CONNECTED 0x01
+#define CONTROLLER_DISCONNECTED 0x02
+#define OPEN_ARM_RIGHT 0x03
+#define OPEN_ARM_LEFT 0x04
+#define CLOSE_ARM_RIGHT 0x05
+#define CLOSE_ARM_LEFT 0x06
+#define EXTEND_ARM_RIGHT 0x07
+#define EXTEND_ARM_LEFT 0x08
+#define REDUCE_ARM_RIGHT 0x09
+#define REDUCE_ARM_LEFT 0x0a
+
 int motorOutput[3];
 int outputX = 0, outputY = 0, outputYaw = 0;
 bool REVERSE = 0;     //コントローラーが反転モードかどうか　OPTIONSボタンで反転＆１８０度自動旋回
@@ -63,7 +74,7 @@ void setup()
     setPwmFrequencyMEGA2560(45, 1);
     setPwmFrequencyMEGA2560(46, 1);
 
-    myIMU.Setup();                       //initialize 9-DOF IMU sensor and calclating bias
+    myIMU.Setup(); //initialize 9-DOF IMU sensor and calclating bias
     //kinematics.setMaxPWM(MaxPWM);        //set 3wheel direction omni kinematics MAX PWM LIMIT
     pinMode(controllerStatsLED, OUTPUT); //pinmode setup(PS4 Dual Shock Controller stats LED)
 }
@@ -75,52 +86,53 @@ void loop()
     if (PS4.connected())
     {
         static uint8_t redElement = 255;
-        static uint8_t greenElement = 0;
+        static uint8_t greenElement = 128;
         static uint8_t blueElement = 0;
         PS4.setLed(redElement, greenElement, blueElement);
         digitalWrite(controllerStatsLED, HIGH);
-        /*if (initialConnect)
-        {
-            initialConnect = false;
-            if (!REVERSE)
-            {
-                myIMU.setYaw(0);
-            }
-        }*/
-        outputX = (PS4.getAnalogHat(LeftHatX) - 127);
-        if (-3.5 < outputX && outputX < 3.5)
-        {
-            outputX = 0;
-        }
-        outputY = (PS4.getAnalogHat(LeftHatY) - 127);
+
+        outputY = (PS4.getAnalogHat(LeftHatX) - 127);
         if (-3.5 < outputY && outputY < 3.5)
         {
             outputY = 0;
         }
+        outputX = (PS4.getAnalogHat(LeftHatY) - 127);
+        if (-3.5 < outputX && outputX < 3.5)
+        {
+            outputX = 0;
+        }
         outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.12;
+
+        static unsigned long prevTime = 0;
+        if ((millis() - prevTime) > 10)
+        {
+            Nucleo.write(CONTROLLER_CONNECTED);
+            prevTime = millis();
+        }
         if (CLICK_UP)
         {
-            Nucleo.write('a');
+            Nucleo.write(EXTEND_ARM_RIGHT);
         }
         else if (CLICK_DOWN)
         {
-            Nucleo.write('b');
+            Nucleo.write(REDUCE_ARM_RIGHT);
         }
         else if (CLICK_RIGHT)
         {
-            Nucleo.write('c');
+            //Nucleo.write('c');
         }
         else if (CLICK_LEFT)
         {
-            Nucleo.write('d');
+            //Nucleo.write('d');
         }
         if (CLICK_CIRCLE)
         {
-            Nucleo.write('e');
+            Nucleo.write(OPEN_ARM_RIGHT);
         }
-        /*else if(CLICK_CROSS){
-                        Nucleo.write('d');
-        }*/
+        else if (CLICK_CROSS)
+        {
+            Nucleo.write(CLOSE_ARM_RIGHT);
+        }
         if (PUSH_TRIANGLE)
         {
             analogWrite(11, 32);
@@ -136,98 +148,19 @@ void loop()
             analogWrite(11, 0);
             analogWrite(12, 0);
         }
-        /*if (PUSH_RIGHT)
-        {
-            outputX = -MaxPWM;
-            outputY = 0;
-        }
-        else if (PUSH_LEFT)
-        {
-            outputX = MaxPWM;
-            outputY = 0;
-        }
-        else if (PUSH_UP)
-        {
-            outputX = 0;
-            outputY = -MaxPWM;
-        }
-        else if (PUSH_DOWN)
-        {
-            outputX = 0;
-            outputY = MaxPWM;
-        }
-        else
-        {
-            outputX = 0;
-            outputY = 0;
-        }
 
-        if (PUSH_R2)
-        {
-            outputYaw = MaxPWM / 1.5;
-        }
-        else if (PUSH_L2)
-        {
-            outputYaw = -MaxPWM / 1.5;
-        }
-        else
-        {
-            outputYaw = 0;
-        }*/
-
-        kinematics.getOutput(-outputX, outputY, outputYaw, myIMU.getYaw(), motorOutput);
+        kinematics.getOutput(-outputX, -outputY, outputYaw, myIMU.getYaw(), motorOutput);
         driveWheel.apply(motorOutput);
 
         if (PS4.getButtonPress(PS))
         {
             if (CLICK_SHARE)
             {
+                Nucleo.write(CONTROLLER_DISCONNECTED);
                 PS4.disconnect();
                 digitalWrite(controllerStatsLED, LOW); //set controller-LED OFF
                 initialConnect = true;                 //set a flag for the next connect
-                //kinematics.getOutput(0, 0, 0, 0, motorOutput);
-                //driveWheel.apply(motorOutput);
             }
         }
     }
-    else
-    {                                                  //apply to motor driver stop by disconnecting PS4 Controller
-        //kinematics.getOutput(0, 0, 0, 0, motorOutput); //calculate PWMs from 3-DOF vectors by kinematics
-        //driveWheel.apply(motorOutput);                 //apply PWMs to motor drivers
-    }
 }
-
-/*
-void LEFTconvertStickValue() {
-    HatX_S  = (PS4.getAnalogHat(LeftHatX) - 127 ) *multi;
-    if(-10 < HatX_S && HatX_S < 10) HatX_S = 0;
-    HatY_S  = (PS4.getAnalogHat(LeftHatY) - 127 ) *multi;
-    if(-10 < HatY_S && HatY_S < 10) HatY_S = 0;
-    //R2Hat_S =  PS4.getAnalogButton(L2) - PS4.getAnalogButton(R2);
-    if(PUSH_L1) memory_yaw += 0.2;
-    if(PUSH_R1) memory_yaw -= 0.2;
-    errorYaw = -(targetYaw + getYawAngle('n'));
-    outputYaw = errorYaw * 2;
-    outputYaw = constrain(outputYaw,-MaxAllocateOutput,MaxAllocateOutput);
-    if(-10 < outputYaw && outputYaw < 10) outputYaw = 0;
-
-    outputX = (HatX_S * cos(errorYaw * DEG_TO_RAD)) + (HatY_S * sin(errorYaw * DEG_TO_RAD));
-    outputY = (HatX_S * sin(errorYaw * DEG_TO_RAD)) + (HatY_S * cos(errorYaw * DEG_TO_RAD));
-}
-void RIGHTconvertStickValue() {
-    HatX_S  = (PS4.getAnalogHat(RightHatX) - 127 ) *multi;
-    if(-10 < HatX_S && HatX_S < 10) HatX_S = 0;
-    HatY_S  = (PS4.getAnalogHat(RightHatY) - 127 ) *multi;
-    if(-10 < HatY_S && HatY_S < 10) HatY_S = 0;
-    //R2Hat_S =  PS4.getAnalogButton(L2) - PS4.getAnalogButton(R2);
-    if(PUSH_L1) memory_yaw += 0.05;
-    if(PUSH_R1) memory_yaw -= 0.05;
-    errorYaw = -(targetYaw + getYawAngle('n'));
-    outputYaw = errorYaw * 2;
-    outputYaw = constrain(outputYaw,-MaxAllocateOutput,MaxAllocateOutput);
-    if(-10 < outputYaw && outputYaw < 10) outputYaw = 0;
-
-    outputX = (HatX_S * cos(errorYaw * DEG_TO_RAD)) + (HatY_S * sin(errorYaw * DEG_TO_RAD));
-    outputY = (HatX_S * sin(errorYaw * DEG_TO_RAD)) + (HatY_S * cos(errorYaw * DEG_TO_RAD));
-}
-*/
