@@ -7,8 +7,10 @@
 class MPU9250
 {
 public:
-  MPU9250(int pin){
-    pinMode(pin,OUTPUT);
+  MPU9250(int pin)
+  {
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, HIGH);
   }
   void Setup();                                                            //センサーの設定＋オフセット値の取得
   void read_accel(double *accel_roll, double *accel_pitch);                //指定したアドレスに加速度センサから算出したroll軸,pitch軸の回転角を返す
@@ -26,6 +28,7 @@ public:
     return yaw - userOffset;
   }
   void setYaw(double targetYaw) { userOffset = targetYaw; }
+  void setBias(double yaw) { userOffset += yaw; }
 
 private:
   byte read_I2C(byte reg);
