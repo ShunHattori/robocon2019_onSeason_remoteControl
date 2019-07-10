@@ -88,7 +88,7 @@ void loop()
         static uint8_t redElement = 255;
         static uint8_t greenElement = 128;
         static uint8_t blueElement = 0;
-        PS4.setLed(redElement, greenElement, blueElement);
+        PS4.setLed(redElement++, greenElement++, blueElement++);
         digitalWrite(controllerStatsLED, HIGH);
 
         outputY = (PS4.getAnalogHat(LeftHatX) - 127);
@@ -101,7 +101,7 @@ void loop()
         {
             outputX = 0;
         }
-        outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.12;
+        outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.10;
 
         static unsigned long prevTime = 0;
         if ((millis() - prevTime) > 10)
