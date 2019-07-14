@@ -13,7 +13,7 @@ MPU6050 myIMU(IMUBootLED);
 #define USING_9DOF_IMU
 #ifdef USING_9DOF_IMU
 #include "MPU9250.h"
-#define IMUBootLED 33
+#define IMUBootLED 26
 MPU9250 myIMU(IMUBootLED);
 #endif //USING_9DOF_IMU
 
@@ -24,7 +24,7 @@ OmniKinematics3WD kinematics(MaxPWM);
 #include "PagodaUnitProtocol.hpp"
 PagodaUnitProtocol Nucleo(&Serial1);
 
-#define controllerStatsLED 35
+#define controllerStatsLED 25
 
 #define CONTROLLER_CONNECTED 0x01
 #define CONTROLLER_DISCONNECTED 0x02
@@ -63,7 +63,7 @@ void setup()
     }
     Serial.print(F("\nUSB_HOST_SHIELD detected, Success opening Serial port.\n"));
 
-    //myIMU.Setup(); //initialize 9-DOF IMU sensor and calclating bias
+    myIMU.Setup(); //initialize 9-DOF IMU sensor and calclating bias
     //kinematics.setMaxPWM(MaxPWM);        //set 3wheel direction omni kinematics MAX PWM LIMIT
     pinMode(controllerStatsLED, OUTPUT); //pinmode setup(PS4 Dual Shock Controller stats LED)
 }
@@ -74,25 +74,26 @@ void loop()
     Usb.Task(); //running USB tasks
     if (PS4.connected())
     {
+        digitalWrite(controllerStatsLED, HIGH);
         /*static uint8_t redElement = 255;
            static uint8_t greenElement = 128;
            static uint8_t blueElement = 0;
            PS4.setLed(redElement, greenElement, blueElement);
            digitalWrite(controllerStatsLED, HIGH);*/
 
-        outputY = (PS4.getAnalogHat(LeftHatX) - 127);
-        if (-3.5 < outputY && outputY < 3.5)
-        {
-            outputY = 0;
-        }
-        outputX = (PS4.getAnalogHat(LeftHatY) - 127);
+        outputX = (PS4.getAnalogHat(LeftHatX) - 127) * 0.3;
         if (-3.5 < outputX && outputX < 3.5)
         {
             outputX = 0;
         }
+        outputY = (PS4.getAnalogHat(LeftHatY) - 127) * 0.3;
+        if (-3.5 < outputY && outputY < 3.5)
+        {
+            outputY = 0;
+        }
         outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.10;
 
-        kinematics.getOutput(-outputX, -outputY, outputYaw, 0, motorOutput);
+        kinematics.getOutput(outputX, outputY, outputYaw, myIMU.gyro_Yaw(), motorOutput);
 
         int term = 6;
         int packet[term] = {
@@ -103,7 +104,7 @@ void loop()
             motorOutput[2] < 0 ? 0 : motorOutput[2],
             motorOutput[2] > 0 ? 0 : -motorOutput[2],
         };
-        Nucleo.transmit(term,packet);
+        Nucleo.transmit(term, packet);
 
         if (PS4.getButtonPress(PS))
         {

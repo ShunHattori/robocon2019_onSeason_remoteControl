@@ -11,9 +11,9 @@ void OmniKinematics3WD::getOutput(int x, int y, int yaw, float yawAngle, int pwm
     if (YawVector != 0)
     { //ユーザーからの回転命令があるとき
         userBias = yawAngle;
-        pwm[0] = +XVector * cos(yawAngle * DEG_TO_RAD) + YVector * sin(yawAngle * DEG_TO_RAD) + YawVector;
-        pwm[1] = +XVector * cos((yawAngle + 60) * DEG_TO_RAD) + YVector * sin((yawAngle + 60) * DEG_TO_RAD) - YawVector;
-        pwm[2] = -XVector * cos((yawAngle + 120) * DEG_TO_RAD) - YVector * sin((yawAngle + 120) * DEG_TO_RAD) - YawVector;
+        pwm[0] = -XVector * cos(yawAngle * DEG_TO_RAD) + YVector * sin(yawAngle * DEG_TO_RAD) - YawVector;
+        pwm[1] = +XVector * cos((yawAngle + 60) * DEG_TO_RAD) - YVector * sin((yawAngle + 60) * DEG_TO_RAD) - YawVector;
+        pwm[2] = -XVector * cos((yawAngle + 120) * DEG_TO_RAD) + YVector * sin((yawAngle + 120) * DEG_TO_RAD) - YawVector;
     }
     else
     { //IMUがYAW軸を自動補正するとき
@@ -22,9 +22,9 @@ void OmniKinematics3WD::getOutput(int x, int y, int yaw, float yawAngle, int pwm
         {
             outputYawPWM = 0;
         }
-        pwm[0] = +XVector * cos(yawAngle * DEG_TO_RAD) + YVector * sin(yawAngle * DEG_TO_RAD) + outputYawPWM;
-        pwm[1] = +XVector * cos((yawAngle + 60) * DEG_TO_RAD) + YVector * sin((yawAngle + 60) * DEG_TO_RAD) - outputYawPWM;
-        pwm[2] = -XVector * cos((yawAngle + 120) * DEG_TO_RAD) - YVector * sin((yawAngle + 120) * DEG_TO_RAD) - outputYawPWM;
+        pwm[0] = -XVector * cos(yawAngle * DEG_TO_RAD) + YVector * sin(yawAngle * DEG_TO_RAD) - outputYawPWM;
+        pwm[1] = +XVector * cos((yawAngle + 60) * DEG_TO_RAD) - YVector * sin((yawAngle + 60) * DEG_TO_RAD) - outputYawPWM;
+        pwm[2] = -XVector * cos((yawAngle + 120) * DEG_TO_RAD) + YVector * sin((yawAngle + 120) * DEG_TO_RAD) - outputYawPWM;
     }
 
     /*pwm[0] = +(XVector)-YawVector;
