@@ -26,17 +26,19 @@ PagodaUnitProtocol Nucleo(&Serial1);
 
 #define controllerStatsLED 25
 
-#define CONTROLLER_CONNECTED 0x01
-#define CONTROLLER_DISCONNECTED 0x02
-#define OPEN_ARM_RIGHT 0x03
-#define OPEN_ARM_LEFT 0x04
-#define CLOSE_ARM_RIGHT 0x05
-#define CLOSE_ARM_LEFT 0x06
-#define EXTEND_ARM_RIGHT 0x07
-#define EXTEND_ARM_LEFT 0x08
-#define REDUCE_ARM_RIGHT 0x09
-#define REDUCE_ARM_LEFT 0x0a
-
+typedef enum cmd {
+    CONTROLLER_CONNECTED = 0x01,
+    CONTROLLER_DISCONNECTED = 0x02,
+    OPEN_ARM_RIGHT = 0x03,
+    OPEN_ARM_LEFT = 0x04,
+    CLOSE_ARM_RIGHT = 0x05,
+    CLOSE_ARM_LEFT = 0x06,
+    EXTEND_ARM_RIGHT = 0x07,
+    EXTEND_ARM_LEFT = 0x08,
+    REDUCE_ARM_RIGHT = 0x09,
+    REDUCE_ARM_LEFT = 0x0a
+} CmdTypes;
+ 
 int motorOutput[3];
 int outputX = 0, outputY = 0, outputYaw = 0;
 bool REVERSE = 0;     //コントローラーが反転モードかどうか　OPTIONSボタンで反転＆１８０度自動旋回
@@ -48,7 +50,7 @@ BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
 void setup()
-{ // put your setup code here, to run once:
+{
     Serial1.begin(115200);
     Serial.begin(115200);
     while (!Serial) //waiting for opening hardware Serial port 0
@@ -62,25 +64,16 @@ void setup()
         }
     }
     Serial.print(F("\nUSB_HOST_SHIELD detected, Success opening Serial port.\n"));
-
     myIMU.Setup(); //initialize 9-DOF IMU sensor and calclating bias
-    //kinematics.setMaxPWM(MaxPWM);        //set 3wheel direction omni kinematics MAX PWM LIMIT
     pinMode(controllerStatsLED, OUTPUT); //pinmode setup(PS4 Dual Shock Controller stats LED)
 }
 
 void loop()
-{ // put your main code here, to run repeatedly:
-
+{
     Usb.Task(); //running USB tasks
     if (PS4.connected())
     {
         digitalWrite(controllerStatsLED, HIGH);
-        /*static uint8_t redElement = 255;
-           static uint8_t greenElement = 128;
-           static uint8_t blueElement = 0;
-           PS4.setLed(redElement, greenElement, blueElement);
-           digitalWrite(controllerStatsLED, HIGH);*/
-
         outputX = (PS4.getAnalogHat(LeftHatX) - 127) * 0.3;
         if (-3.5 < outputX && outputX < 3.5)
         {
