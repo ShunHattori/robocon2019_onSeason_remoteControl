@@ -8,9 +8,9 @@
             "includePath": [
                 "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/include",
                 "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/src",
-                "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
                 "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/lib/USB_Host_Shield_2.0-master",
                 "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
                 "C:/Users/USER/.platformio/packages/framework-arduinoavr/cores/arduino",
                 "C:/Users/USER/.platformio/packages/framework-arduinoavr/variants/mega",
                 "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src",
@@ -25,9 +25,9 @@
                 "path": [
                     "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/include",
                     "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/src",
-                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
                     "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/lib/USB_Host_Shield_2.0-master",
                     "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
                     "C:/Users/USER/.platformio/packages/framework-arduinoavr/cores/arduino",
                     "C:/Users/USER/.platformio/packages/framework-arduinoavr/variants/mega",
                     "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src",

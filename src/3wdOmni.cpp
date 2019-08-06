@@ -22,7 +22,7 @@ MPU9250 myIMU(IMUBootLED);
 OmniKinematics3WD kinematics(MaxPWM);
 
 #include "PagodaUnitProtocol.hpp"
-PagodaUnitProtocol Nucleo(&Serial1);
+PagodaUnitProtocol Nucleo(&Serial3);
 
 #define controllerStatsLED 25
 
@@ -47,9 +47,56 @@ USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
+/*
+            circle:右側開く
+            triangle:左側開く
+            cross:右側閉じる
+            square:左側閉じる
+            up:右側伸ばす
+            right:右側縮小
+            left:左側伸ばす
+            down:左側縮小
+         */
+void ButtonClick(bool *state)
+{
+    if (PS4.getButtonPress(CIRCLE))
+    {
+        state[0] = 1;
+    }
+    else if (PS4.getButtonPress(CROSS))
+    {
+        state[0] = 0;
+    }
+    else if (PS4.getButtonPress(TRIANGLE))
+    {
+        state[1] = 1;
+    }
+    else if (PS4.getButtonPress(SQUARE))
+    {
+        state[1] = 0;
+    }
+    else if (PS4.getButtonPress(UP))
+    {
+        state[2] = 1;
+    }
+    else if (PS4.getButtonPress(RIGHT))
+    {
+        state[2] = 0;
+    }
+    else if (PS4.getButtonPress(LEFT))
+    {
+        state[3] = 1;
+    }
+    else if (PS4.getButtonPress(DOWN))
+    {
+        state[3] = 0;
+    }
+    return;
+}
+
 void setup()
 { // put your setup code here, to run once:
-    Serial1.begin(115200);
+    Serial3.begin(115200);
     Serial.begin(115200);
     while (!Serial) //waiting for opening hardware Serial port 0
     {
@@ -81,6 +128,19 @@ void loop()
            PS4.setLed(redElement, greenElement, blueElement);
            digitalWrite(controllerStatsLED, HIGH);*/
 
+        /*
+            circle:右側開く
+            triangle:左側開く
+            cross:右側閉じる
+            square:左側閉じる
+            up:右側伸ばす
+            down:左側縮小
+            right:右側縮小
+            left:左側伸ばす
+         */
+        //static bool armState[4];
+        //ButtonClick(armState); //states store in armstate array
+
         outputX = (PS4.getAnalogHat(LeftHatX) - 127) * 0.3;
         if (-3.5 < outputX && outputX < 3.5)
         {
@@ -91,10 +151,24 @@ void loop()
         {
             outputY = 0;
         }
-        outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.10;
+        outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
 
-        kinematics.getOutput(outputX, outputY, outputYaw, myIMU.gyro_Yaw(), motorOutput);
-
+        kinematics.getOutput(outputX, outputY, -outputYaw, myIMU.gyro_Yaw(), motorOutput);
+/*
+        int term = 10;
+        int packet[term] = {
+            motorOutput[0] < 0 ? 0 : motorOutput[0],
+            motorOutput[0] > 0 ? 0 : -motorOutput[0],
+            motorOutput[1] < 0 ? 0 : motorOutput[1],
+            motorOutput[1] > 0 ? 0 : -motorOutput[1],
+            motorOutput[2] < 0 ? 0 : motorOutput[2],
+            motorOutput[2] > 0 ? 0 : -motorOutput[2],
+            armState[0],
+            armState[1],
+            armState[2],
+            armState[3],
+        };
+*/
         int term = 6;
         int packet[term] = {
             motorOutput[0] < 0 ? 0 : motorOutput[0],
