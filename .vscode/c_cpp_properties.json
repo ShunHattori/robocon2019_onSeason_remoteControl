@@ -38,7 +38,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=40000",
+                "PLATFORMIO=30607",
                 "ARDUINO_AVR_ADK",
                 "F_CPU=16000000L",
                 "ARDUINO_ARCH_AVR",
@@ -49,7 +49,7 @@
             "intelliSenseMode": "clang-x64",
             "cStandard": "c11",
             "cppStandard": "c++11",
-            "compilerPath": "\"C:/Users/USER/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe\" -mmcu=atmega2560"
+            "compilerPath": "\"C:/Users/kirar/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe\" -mmcu=atmega2560"
         }
     ],
     "version": 4
