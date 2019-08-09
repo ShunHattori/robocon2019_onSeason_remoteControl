@@ -18,7 +18,7 @@ MPU9250 myIMU(IMUBootLED);
 #endif //USING_9DOF_IMU
 
 #include "OmniKinematics3WD.h"
-#define MaxPWM 200
+#define MaxPWM 250
 OmniKinematics3WD kinematics(MaxPWM);
 
 #include "PagodaUnitProtocol.hpp"
@@ -40,8 +40,8 @@ typedef enum cmd {
 } CmdTypes;
 
 int motorOutput[3];
-int outputX = 0, outputY = 0, outputYaw = 0;
-bool REVERSE = 0;     //コントローラーが反転モードかどうか　OPTIONSボタンで反転＆１８０度自動旋回
+double rawPWM[3];
+bool REVERSE = 0; //コントローラーが反転モードかどうか　OPTIONSボタンで反転＆１８０度自動旋回
 bool CONTROLMODE = 1; //CONTROLMODE 1:Bottle reference, 0:Meal reference (Switch with "SHARE" button)
 bool initialConnect = true;
 
@@ -140,19 +140,36 @@ void loop()
         //static bool armState[4];
         //ButtonClick(armState); //states store in armstate array
 
-        outputX = (PS4.getAnalogHat(LeftHatX) - 127) * 0.3;
-        if (-3.5 < outputX && outputX < 3.5)
-        {
-            outputX = 0;
-        }
-        outputY = (PS4.getAnalogHat(LeftHatY) - 127) * 0.3;
-        if (-3.5 < outputY && outputY < 3.5)
-        {
-            outputY = 0;
-        }
-        outputYaw = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
+        static double multiply = 0.3;
+        if(PS4.getButtonPress(OPTIONS) && PS4.getButtonClick(R1))
+            multiply += 0.05;
+        else if (PS4.getButtonPress(OPTIONS) && PS4.getButtonClick(L1))
+            multiply -= 0.05;
 
-        kinematics.getOutput(outputX, outputY, -outputYaw, myIMU.gyro_Yaw(), motorOutput);
+        multiply = (multiply > 1.0) ? 1.0 : (multiply < 0) ? 0 : multiply;
+
+
+        rawPWM[0] = (PS4.getAnalogHat(LeftHatX) - 127) * multiply;
+        if (-3.5 < rawPWM[0] && rawPWM[0] < 3.5)
+        {
+            rawPWM[0] = 0;
+        }
+        rawPWM[1] = (PS4.getAnalogHat(LeftHatY) - 127) * multiply;
+        if (-3.5 < rawPWM[1] && rawPWM[1] < 3.5)
+        {
+            rawPWM[1] = 0;
+        }
+        static double RCconstant = 0.92;
+        static double modifiedPWM[2], prevPWM[2];
+        for (int i = 0; i < 2; i++)
+        {
+            modifiedPWM[i] = (RCconstant * prevPWM[i]) + ((1 - RCconstant) * rawPWM[i]);
+            prevPWM[i] = modifiedPWM[i];
+        }
+
+        rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
+
+        kinematics.getOutput(modifiedPWM[0], modifiedPWM[1], -rawPWM[2], myIMU.gyro_Yaw(), motorOutput);
 /*
         int term = 10;
         int packet[term] = {
