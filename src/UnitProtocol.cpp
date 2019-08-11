@@ -3,7 +3,7 @@
 UnitProtocol::UnitProtocol(Stream *str) {
   _myStream = str;
   _watchDogInitTime = 0;
-  _timeoutMs = 20;  // set the timeout time to  20ms
+  _timeoutMs = 20; // set the timeout time to  20ms
   _isTransmittable = 1;
   _isReceivable = 1;
 }
@@ -11,7 +11,7 @@ UnitProtocol::UnitProtocol(Stream *str) {
 void UnitProtocol::transmit(int arrayLenght, int *packet) {
   _arrayLenght = arrayLenght;
   if (!_isTransmittable) {
-              return;
+    return;
   }
   ENQsend(STX);
   char _checkSum = 0;
