@@ -29,7 +29,8 @@ UnitProtocol MDD2(&Serial3);
 
 #define controllerStatsLED 25
 
-typedef enum cmd {
+typedef enum cmd
+{
   CONTROLLER_CONNECTED = 0x01,
   CONTROLLER_DISCONNECTED = 0x02,
   OPEN_ARM_RIGHT = 0x03,
@@ -83,7 +84,8 @@ void setup()
   if (Usb.Init() == -1) // initialize USB device
   {
     Serial.print(F("\nArduino hasn't attached USB_HOST_SHIELD.\n"));
-    while (1) {
+    while (1)
+    {
     }
   }
   Serial.print(F("\nUSB_HOST_SHIELD detected, Success opening Serial port.\n"));
@@ -115,7 +117,8 @@ void loop()
       rawPWM[1] = 0;
     static double RCconstant = 0.92;
     static double modifiedPWM[2], prevPWM[2];
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 2; i++)
+    {
       modifiedPWM[i] = (RCconstant * prevPWM[i]) + ((1 - RCconstant) * rawPWM[i]);
       prevPWM[i] = modifiedPWM[i];
     }
@@ -156,27 +159,47 @@ void loop()
     static int rotationMecaTartget;
     static bool armState[4]; //rightHand, leftHand, rightExtend, leftExtend
     if (PS4.getButtonClick(SHARE))
-      extendToggleFlag != extendToggleFlag;
+      extendToggleFlag = !extendToggleFlag;
     if (PS4.getButtonClick(R1))
       rotationMecaTartget += 48;
     else if (PS4.getButtonClick(L1))
       rotationMecaTartget -= 48;
     if (PS4.getButtonClick(CIRCLE))
+    {
       armState[0] = 1;
+    }
     else if (PS4.getButtonClick(CROSS))
+    {
       armState[0] = 0;
+    }
     if (PS4.getButtonClick(TRIANGLE))
+    {
       armState[1] = 1;
+    }
     else if (PS4.getButtonClick(SQUARE))
+    {
       armState[1] = 0;
+    }
     if (PS4.getButtonClick(UP))
+    {
       armState[2] = 1;
+    }
     else if (PS4.getButtonClick(RIGHT))
+    {
       armState[2] = 0;
+    }
     if (PS4.getButtonClick(LEFT))
+    {
       armState[3] = 1;
+    }
     else if (PS4.getButtonClick(DOWN))
+    {
       armState[3] = 0;
+    }
+
+    static unsigned long solenoidActivatedPeriod[4];
+    if ()
+      ;
     /*
         MDD1データキューに回転、上下機構の出力値を格納
         TODO:ソレノイド処理を追加
