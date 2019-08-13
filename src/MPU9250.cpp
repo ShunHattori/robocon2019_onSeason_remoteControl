@@ -10,11 +10,8 @@ byte MPU9250::read_I2C(byte reg)
   return data;
 }
 
-void MPU9250::Setup()
+void MPU9250::calibration()
 {
-  Serial.begin(115200);
-  Wire.begin();
-  Wire.setClock(400000);
   Wire.beginTransmission(gyro_address);
   Wire.write(0x6B);
   Wire.write(0x00);
@@ -32,7 +29,7 @@ void MPU9250::Setup()
 
   while (read_I2C(reg_WAI) != 0x71)
   {
-    Serial.println("connect_error");
+    Serial.println("IMU couldn'd initialized, check your wire connections.");
   }
 
   for (int i = 0; i < 3000; i++)
@@ -92,6 +89,7 @@ void MPU9250::Setup()
     offset_mag_plus = offset_mag + 180;
     offset_mag_minus = offset_mag;
   }
+  digitalWrite(LEDpin, HIGH);
 }
 
 double MPU9250::complement_Yaw()
