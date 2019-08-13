@@ -8,13 +8,14 @@ typedef enum ASCII {
   ACK = 0x06, // Acknowledge
 } ControlCodes;
 
-class UnitProtocol {
+class UnitProtocol
+{
 public:
   UnitProtocol(Stream *str);
   void transmit(int arrayLenght, int *packet);
   void receive(int *variableToStore);
   void setTimeout(int timeoutTimeInMs);
-  void addDataFlowLED(int LEDPin, char *whichDataFlow);
+  void addDataFlowLED(int LEDPin, byte *whichDataFlow);
 
 private:
   Stream *_myStream;
@@ -23,6 +24,6 @@ private:
   int _timeoutMs, _arrayLenght;
   bool _isTransmittable, _isReceivable;
 
-  void ENQsend(char data);
-  char ACKreceive();
+  void ENQsend(byte data);
+  byte ACKreceive();
 };

@@ -29,8 +29,7 @@ UnitProtocol MDD2(&Serial3);
 
 #define controllerStatsLED 25
 
-typedef enum cmd
-{
+typedef enum cmd {
   CONTROLLER_CONNECTED = 0x01,
   CONTROLLER_DISCONNECTED = 0x02,
   OPEN_ARM_RIGHT = 0x03,
@@ -123,7 +122,7 @@ void loop()
       prevPWM[i] = modifiedPWM[i];
     }
     rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-    kinematics.getOutput(modifiedPWM[0], modifiedPWM[1], -rawPWM[2], myIMU.gyro_Yaw(), motorOutput);
+    kinematics.getOutput(modifiedPWM[0], modifiedPWM[1], -rawPWM[2], -myIMU.gyro_Yaw(), motorOutput);
 
     int drivePacket[DriveWheel] = {
         motorOutput[0] < 0 ? 0 : motorOutput[0],
@@ -139,19 +138,27 @@ void loop()
     /*
         SBからセンサ値取得
     */
-    static int SensorRawData[4];
+    static int SensorRawData[5];
     static int SensorModifiedData[3];
     SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
     for (int i = 0; i < 3; i++)
     {
-      if (i < 3)
+      if (i < 2)
       {
         SensorModifiedData[i] = SensorRawData[i];
         continue;
       }
-      SensorModifiedData[i] = SensorRawData[i] * SensorRawData[i + 1];
+      SensorModifiedData[i] = SensorRawData[i + 1] + (255 * abs((SensorRawData[i + 2] - 128)));
+      if (SensorRawData[i])
+        SensorModifiedData[i] = -SensorModifiedData[i];
     }
-
+    /*
+    Serial.print(SensorModifiedData[0]);
+    Serial.print("\t");
+    Serial.print(SensorModifiedData[1]);
+    Serial.print("\t");
+    Serial.println(SensorModifiedData[2]);
+    */
     /*
         コントローラーとセンサの値から出力値を計算
     */
@@ -161,9 +168,9 @@ void loop()
     if (PS4.getButtonClick(SHARE))
       extendToggleFlag = !extendToggleFlag;
     if (PS4.getButtonClick(R1))
-      rotationMecaTartget += 48;
+      rotationMecaTartget += 140;
     else if (PS4.getButtonClick(L1))
-      rotationMecaTartget -= 48;
+      rotationMecaTartget -= 140;
     if (PS4.getButtonClick(CIRCLE))
     {
       armState[0] = 1;
@@ -198,8 +205,6 @@ void loop()
     }
 
     static unsigned long solenoidActivatedPeriod[4];
-    if ()
-      ;
     /*
         MDD1データキューに回転、上下機構の出力値を格納
         TODO:ソレノイド処理を追加
@@ -220,27 +225,28 @@ void loop()
       MDD1Packet[0] = 0;
       MDD1Packet[1] = 0;
     }
-    if (5 > (rotationMecaTartget - SensorModifiedData[3]) && (rotationMecaTartget - SensorModifiedData[3]) > -5)
+    if (7 > (rotationMecaTartget - SensorModifiedData[2]) && (rotationMecaTartget - SensorModifiedData[2]) > -7)
     {
       MDD1Packet[2] = 0;
       MDD1Packet[3] = 0;
     }
-    else if ((rotationMecaTartget - SensorModifiedData[3]) > 0)
+    else if ((rotationMecaTartget - SensorModifiedData[2]) > 0)
     {
       MDD1Packet[2] = 50;
       MDD1Packet[3] = 0;
     }
-    else if (0 > (rotationMecaTartget - SensorModifiedData[3]))
+    else if (0 > (rotationMecaTartget - SensorModifiedData[2]))
     {
       MDD1Packet[2] = 0;
       MDD1Packet[3] = 50;
     }
+    MDD1.transmit(4, MDD1Packet);
     /*
         コントローラー切断処理
     */
     if (PS4.getButtonPress(PS))
     {
-      if (CLICK_SHARE)
+      if (PS4.getButtonClick(OPTIONS))
       {
         PS4.disconnect();
         digitalWrite(controllerStatsLED, LOW); // set controller-LED OFF

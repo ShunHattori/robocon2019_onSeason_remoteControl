@@ -1,6 +1,7 @@
 #include "UnitProtocol.hpp"
 
-UnitProtocol::UnitProtocol(Stream *str) {
+UnitProtocol::UnitProtocol(Stream *str)
+{
   _myStream = str;
   _watchDogInitTime = 0;
   _timeoutMs = 20; // set the timeout time to  20ms
@@ -8,13 +9,15 @@ UnitProtocol::UnitProtocol(Stream *str) {
   _isReceivable = 1;
 }
 
-void UnitProtocol::transmit(int arrayLenght, int *packet) {
+void UnitProtocol::transmit(int arrayLenght, int *packet)
+{
   _arrayLenght = arrayLenght;
-  if (!_isTransmittable) {
+  if (!_isTransmittable)
+  {
     return;
   }
   ENQsend(STX);
-  char _checkSum = 0;
+  byte _checkSum = 0;
   for (int i = 0; i < arrayLenght; i++) {
     ENQsend(packet[i]);
     _checkSum ^= packet[i];
@@ -23,24 +26,29 @@ void UnitProtocol::transmit(int arrayLenght, int *packet) {
   ENQsend(ETX);
 }
 
-void UnitProtocol::receive(int *variableToStore) {
-  if (!(_myStream->available())) {
+void UnitProtocol::receive(int *variableToStore)
+{
+  if (!(_myStream->available()))
+  {
     return;
   }
-  char data = ACKreceive();
-  if (data != STX) {
+  byte data = ACKreceive();
+  if (data != STX)
+  {
     return;
   }
   int _incomingCounter = 0;
-  char _buffer[50], _bufferSum = 0;
+  byte _buffer[50], _bufferSum = 0;
   while (1) {
     while (!(_myStream->available())) {
-      if ((millis() - _watchDogComparePrevTime) > _timeoutMs) {
+      if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
+      {
         return;
       }
     }
     data = ACKreceive();
-    if (data == ETX) {
+    if (data == ETX)
+    {
       break;
     }
     _buffer[_incomingCounter++] = data;
@@ -48,7 +56,8 @@ void UnitProtocol::receive(int *variableToStore) {
   for (int i = 0; i < _incomingCounter - 1; i++) {
     _bufferSum ^= _buffer[i];
   }
-  if (_buffer[_incomingCounter - 1] == _bufferSum) {
+  if (_buffer[_incomingCounter - 1] == _bufferSum)
+  {
     for (int i = 0; i < _incomingCounter - 1; i++) {
       variableToStore[i] = _buffer[i];
     }
@@ -57,46 +66,56 @@ void UnitProtocol::receive(int *variableToStore) {
 
 void UnitProtocol::setTimeout(int timeoutTimeInMs) {}
 
-void UnitProtocol::addDataFlowLED(int LEDPin, char *whichDataFlow) {}
+void UnitProtocol::addDataFlowLED(int LEDPin, byte *whichDataFlow) {}
 
-void UnitProtocol::ENQsend(char data) {
+void UnitProtocol::ENQsend(byte data)
+{
   _myStream->write(ENQ);
   _watchDogComparePrevTime = millis();
   while (1) {
-    if ((millis() - _watchDogComparePrevTime) > _timeoutMs) {
+    if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
+    {
       return;
     }
-    if (!(_myStream->available())) {
+    if (!(_myStream->available()))
+    {
       continue;
     }
-    if (_myStream->read() == ACK) {
+    if (_myStream->read() == ACK)
+    {
       _myStream->write(data);
       return;
     }
   }
 }
 
-char UnitProtocol::ACKreceive() {
+byte UnitProtocol::ACKreceive()
+{
   _watchDogComparePrevTime = millis();
   while (1) {
-    if ((millis() - _watchDogComparePrevTime) > _timeoutMs) {
+    if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
+    {
       return 0;
     }
-    if (!(_myStream->available())) {
+    if (!(_myStream->available()))
+    {
       continue;
     }
-    if (_myStream->read() == ENQ) {
+    if (_myStream->read() == ENQ)
+    {
       _myStream->write(ACK);
       break;
     }
   }
   _watchDogComparePrevTime = millis();
   while (1) {
-    if ((millis() - _watchDogComparePrevTime) > _timeoutMs) {
+    if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
+    {
       return 0;
     }
-    if (_myStream->available()) {
-      char receive = _myStream->read();
+    if (_myStream->available())
+    {
+      byte receive = _myStream->read();
       return receive;
     }
   }
