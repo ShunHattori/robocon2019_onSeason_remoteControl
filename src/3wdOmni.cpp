@@ -6,8 +6,7 @@ USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
-typedef enum statsLEDs
-{
+typedef enum statsLEDs {
   No1 = 22,
   No2,
   No3,
@@ -17,7 +16,7 @@ typedef enum statsLEDs
 
 struct
 {
-  long HardwareSerial = 115200;
+  long HardwareSerial = 256000;
   int SoftwareSerial = 38400;
   long I2C = 400000;
 } SerialBaud;
@@ -32,8 +31,8 @@ struct parameter
 {
   const int MaxPWM = 250;
   const int DriveWheel = 3;
-  const int HeadRotationEncoderPulse = 143;
-  const double RCfilterIntensity = 0.95;
+  const int HeadRotationEncoderPulse = 147;
+  const double RCfilterIntensity = 0;
   const double pwmMultiplyIncreaseRate = 0.05;
   const double solenoidValueOpenTime = 200; //in ms
   double pwmMultiply = 0.3;
@@ -156,9 +155,9 @@ void loop()
   /*
         コントローラーとセンサの値から出力値を計算
   */
-  static bool extendToggleFlag;
-  static int rotationMecaTartget;
-  static bool armState[4]; //rightHand, leftHand, rightExtend, leftExtend
+  static bool extendToggleFlag = 0;
+  static int rotationMecaTartget = 0;
+  static int armState[4]; //rightHand, leftHand, rightExtend, leftExtend
   if (PS4.getButtonClick(SHARE))
     extendToggleFlag = !extendToggleFlag;
   if (PS4.getButtonClick(R1))
@@ -229,7 +228,7 @@ void loop()
         MDD1データキューに回転、上下機構の出力値を格納
         TODO:ソレノイド処理を追加
     */
-  if (extendToggleFlag && !SensorModifiedData[0])
+  /*if (extendToggleFlag && !SensorModifiedData[0])
   { //展開したい&&上側のリミットスイッチが押されてない
     MDD1Packet[0] = 50;
     MDD1Packet[1] = 0;
@@ -243,24 +242,30 @@ void loop()
   {
     MDD1Packet[0] = 0;
     MDD1Packet[1] = 0;
-  }
+  }*/
   if (7 > (rotationMecaTartget - SensorModifiedData[2]) && (rotationMecaTartget - SensorModifiedData[2]) > -7)
   {
-    MDD1Packet[2] = 0;
-    MDD1Packet[3] = 0;
+    MDD1Packet[0] = 0;
+    MDD1Packet[1] = 0;
   }
   else if ((rotationMecaTartget - SensorModifiedData[2]) > 0)
   {
-    MDD1Packet[2] = 50;
-    MDD1Packet[3] = 0;
+    MDD1Packet[0] = 50;
+    MDD1Packet[1] = 0;
   }
   else if (0 > (rotationMecaTartget - SensorModifiedData[2]))
   {
-    MDD1Packet[2] = 0;
-    MDD1Packet[3] = 50;
+    MDD1Packet[0] = 0;
+    MDD1Packet[1] = 50;
   }
   MDD1.transmit(8, MDD1Packet);
-
+  Serial.print(rotationMecaTartget);
+  Serial.print(",");
+  Serial.print(SensorModifiedData[2]);
+  Serial.print(",");
+  Serial.print(MDD1Packet[2]);
+  Serial.print(",");
+  Serial.println(MDD1Packet[3]);
   /*
         コントローラー切断処理
   */
