@@ -1,18 +1,23 @@
 #ifndef MPU9250_h
 #define MPU9250_h
 
-#include "Arduino.h"
 #include <Wire.h>
+#include "Arduino.h"
 
 class MPU9250
 {
 public:
-  MPU9250(int pin)
+  MPU9250(int baud)
   {
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, HIGH);
+    Wire.begin();
+    Wire.setClock(baud);
   }
-  void Setup();                                                            //センサーの設定＋オフセット値の取得
+  void addStatsLED(int pin)
+  {
+    LEDpin = pin;
+    pinMode(LEDpin, OUTPUT);
+  }
+  void calibration();                                                      //センサーの設定＋オフセット値の取得
   void read_accel(double *accel_roll, double *accel_pitch);                //指定したアドレスに加速度センサから算出したroll軸,pitch軸の回転角を返す
   void read_gyro(double *gyro_roll, double *gyro_pitch, double *gyro_yaw); //指定したアドレスにジャイロセンサから算出した各軸の回転角を返す
   void read_compass(double *Mx, double *My, double *Mz);                   //指定したアドレスに地磁気センサの生値を返す
@@ -32,7 +37,7 @@ public:
 
 private:
   byte read_I2C(byte reg);
-
+  int LEDpin;
   enum address
   {
     gyro_address = 0x68, //address of MPU9025(加速度、ジャイロ)
