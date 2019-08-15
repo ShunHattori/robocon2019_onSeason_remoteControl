@@ -94,7 +94,7 @@ void setup()
 
 void loop()
 {
-  for (int i = 0; i < 50; i++)
+  for (int i = 0; i < 100; i++)
   {
     Usb.Task(); // running USB tasks
   }
