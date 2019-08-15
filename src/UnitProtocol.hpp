@@ -1,7 +1,8 @@
 #pragma once
 #include "Arduino.h"
 
-typedef enum ASCII {
+typedef enum ASCII
+{
   STX = 0x02, // Start of Text
   ETX = 0x03, // End of Text
   ENQ = 0x05, // Enquiry
@@ -12,8 +13,8 @@ class UnitProtocol
 {
 public:
   UnitProtocol(Stream *str);
-  void transmit(int arrayLenght, int *packet);
-  void receive(int *variableToStore);
+  int transmit(int arrayLenght, int *packet);
+  int receive(int *variableToStore);
   void setTimeout(int timeoutTimeInMs);
   void addDataFlowLED(int LEDPin, byte *whichDataFlow);
 

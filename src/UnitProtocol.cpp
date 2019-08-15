@@ -9,7 +9,7 @@ UnitProtocol::UnitProtocol(Stream *str)
   _isReceivable = 1;
 }
 
-void UnitProtocol::transmit(int arrayLenght, int *packet)
+int UnitProtocol::transmit(int arrayLenght, int *packet)
 {
   _arrayLenght = arrayLenght;
   _myStream->write(ENQ); //送信してもいいですか
@@ -18,7 +18,7 @@ void UnitProtocol::transmit(int arrayLenght, int *packet)
   {
     if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
     {
-      return; //タイムアウト
+      return 0; //タイムアウト
     }
     if (!(_myStream->available())) //バッファに何もない
     {
@@ -37,17 +37,18 @@ void UnitProtocol::transmit(int arrayLenght, int *packet)
     _checkSum ^= packet[i];      //チェックサム計算
   }
   _myStream->write(_checkSum); //これと比較して破損確認
+  return 1;
 }
 
-void UnitProtocol::receive(int *variableToStore)
+int UnitProtocol::receive(int *variableToStore)
 {
   if (!(_myStream->available())) //バッファに何もない
   {
-    return;
+    return 0;
   }
   if (_myStream->read() != ENQ) //中身がENQじゃなかったら
   {
-    return;
+    return 0;
   }
   _myStream->write(ACK); //中身がENQじゃなかったらACK送信
   int _incomingCounter = 0;
@@ -57,7 +58,7 @@ void UnitProtocol::receive(int *variableToStore)
   {
     if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
     {
-      return; //タイムアウト
+      return 0; //タイムアウト
     }
     if (!(_myStream->available())) //バッファに何もない
     {
@@ -73,7 +74,7 @@ void UnitProtocol::receive(int *variableToStore)
     {
       if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
       {
-        return; //タイムアウト
+        return 0; //タイムアウト
       }
       if (!(_myStream->available())) //バッファに何もない
       {
@@ -85,7 +86,7 @@ void UnitProtocol::receive(int *variableToStore)
   }
   if (_arrayLenght != _incomingCounter) //あらかじめ教えられていたデータ長と実際に来たデータ長が違う場合を弾く
   {
-    return;
+    return 0;
   }
   for (int i = 0; i < _incomingCounter; i++)
   {
@@ -95,7 +96,7 @@ void UnitProtocol::receive(int *variableToStore)
   {
     if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
     {
-      return; //タイムアウト
+      return 0; //タイムアウト
     }
     if (!(_myStream->available())) //バッファに何もない
     {
@@ -103,7 +104,7 @@ void UnitProtocol::receive(int *variableToStore)
     }
     if (_myStream->read() != _bufferSum)
     {
-      return;
+      return 0;
     }
     break;
   }
@@ -111,6 +112,7 @@ void UnitProtocol::receive(int *variableToStore)
   {
     variableToStore[i] = _buffer[i];
   }
+  return 1;
 }
 
 void UnitProtocol::setTimeout(int timeoutTimeInMs)

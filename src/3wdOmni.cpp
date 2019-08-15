@@ -50,26 +50,30 @@ UnitProtocol MDD2(&Serial3);
 
 int *driverPWMOutput = new int[Robot.DriveWheel];
 double *rawPWM = new double[Robot.DriveWheel];
+bool communicationStatsLED[3];
 
 void initializeOnBoardLEDs();
 void updateOnBoardLEDs();
 inline void RCfilter(const int, const double, double *, double *, double *);
 /*
+    LeftStick:全方位移動    
+    R2:右旋回
+    L2:左旋回
     circle:右側開く
     triangle:左側開く
     cross:右側閉じる
     square:左側閉じる
-    up:右側伸ばす
+    up:右側展開
     right:右側縮小
-    left:左側伸ばす
+    left:左側展開
     down:左側縮小
     share(toggle):上下展開
-    R1:頭右回転
-    L1:頭左回転
+    R1:頭1/4右回転
+    L1:頭1/4左回転
     OPTION + R1:最大速度上昇
     OPTION + L1:最大速度減少
-    R2:右旋回
-    L2:左旋回
+    PS:接続
+    PS + OPTION:切断
  */
 
 void setup()
@@ -138,13 +142,13 @@ void loop()
       driverPWMOutput[2] < 0 ? 0 : driverPWMOutput[2],
       driverPWMOutput[2] > 0 ? 0 : -driverPWMOutput[2],
   };
-  MDD2.transmit(Robot.DriveWheel * 2, drivePacket);
+  communicationStatsLED[0] = MDD2.transmit(Robot.DriveWheel * 2, drivePacket);
   /*
         SBからセンサ値取得
   */
   static int SensorRawData[5];
   static int SensorModifiedData[3];
-  //SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
+  //communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
   for (int i = 0; i < 3; i++)
   {
     if (i < 2)
@@ -269,7 +273,7 @@ void loop()
     MDD1Packet[0] = 0;
     MDD1Packet[1] = 50;
   }
-  //MDD1.transmit(8, MDD1Packet);
+  //communicationStatsLED[2] = MDD1.transmit(8, MDD1Packet);
   /*Serial.print(rotationMecaTartget);
   Serial.print(",");
   Serial.print(SensorModifiedData[2]);
@@ -291,6 +295,9 @@ void loop()
 
 void initializeOnBoardLEDs()
 {
+  pinMode(onBoardLEDs::No1, OUTPUT);
+  pinMode(onBoardLEDs::No2, OUTPUT);
+  pinMode(onBoardLEDs::No3, OUTPUT);
   pinMode(onBoardLEDs::No4, OUTPUT); // pinmode setup(PS4 Dual Shock Controller connection stats LED)
 }
 
@@ -303,6 +310,30 @@ void updateOnBoardLEDs()
   else
   {
     digitalWrite(onBoardLEDs::No4, LOW);
+  }
+  if (communicationStatsLED[0] && PS4.connected())
+  {
+    digitalWrite(onBoardLEDs::No1, HIGH);
+  }
+  else
+  {
+    digitalWrite(onBoardLEDs::No1, LOW);
+  }
+  if (communicationStatsLED[1] && PS4.connected())
+  {
+    digitalWrite(onBoardLEDs::No2, HIGH);
+  }
+  else
+  {
+    digitalWrite(onBoardLEDs::No2, LOW);
+  }
+  if (communicationStatsLED[2] && PS4.connected())
+  {
+    digitalWrite(onBoardLEDs::No3, HIGH);
+  }
+  else
+  {
+    digitalWrite(onBoardLEDs::No3, LOW);
   }
 }
 
