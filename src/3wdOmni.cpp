@@ -6,7 +6,8 @@ USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
-typedef enum statsLEDs {
+typedef enum statsLEDs
+{
   No1 = 22,
   No2,
   No3,
@@ -86,14 +87,18 @@ void setup()
       ;
   }
   Serial.print(F("\nUSB_HOST_SHIELD detected, Success opening Serial port.\n"));
-  IMU.addStatsLED(onBoardLEDs::No1);
+  IMU.addStatsLED(onBoardLEDs::No5);
   IMU.calibration(); // initialize 9-DOF IMU sensor and calclating bias
   initializeOnBoardLEDs();
 }
 
 void loop()
 {
-  Usb.Task(); // running USB tasks
+  for (int i = 0; i < 50; i++)
+  {
+    Usb.Task(); // running USB tasks
+  }
+
   updateOnBoardLEDs();
   if (!PS4.connected()) //未接続の場合以下の処理を弾く
     return;
@@ -113,11 +118,18 @@ void loop()
   if (-3.5 < rawPWM[1] && rawPWM[1] < 3.5)
     rawPWM[1] = 0;
 
-  static double modifiedPWM[2], prevPWM[2];
-  RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
+  //static double modifiedPWM[2], prevPWM[2];
+  //RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-  kinematics.getOutput(modifiedPWM[0], modifiedPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
+  kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
 
+  /*static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
+  Serial.print(rawPWM[0]);
+  Serial.print("\t");
+  Serial.print(rawPWM[1]);
+  Serial.print("\t");
+  Serial.println(millis() - timer);
+  timer = millis();*/
   int drivePacket[Robot.DriveWheel * 2] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
@@ -127,13 +139,12 @@ void loop()
       driverPWMOutput[2] > 0 ? 0 : -driverPWMOutput[2],
   };
   MDD2.transmit(Robot.DriveWheel * 2, drivePacket);
-
   /*
         SBからセンサ値取得
   */
   static int SensorRawData[5];
   static int SensorModifiedData[3];
-  SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
+  //SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
   for (int i = 0; i < 3; i++)
   {
     if (i < 2)
@@ -258,14 +269,14 @@ void loop()
     MDD1Packet[0] = 0;
     MDD1Packet[1] = 50;
   }
-  MDD1.transmit(8, MDD1Packet);
-  Serial.print(rotationMecaTartget);
+  //MDD1.transmit(8, MDD1Packet);
+  /*Serial.print(rotationMecaTartget);
   Serial.print(",");
   Serial.print(SensorModifiedData[2]);
   Serial.print(",");
   Serial.print(MDD1Packet[2]);
   Serial.print(",");
-  Serial.println(MDD1Packet[3]);
+  Serial.println(MDD1Packet[3]);*/
   /*
         コントローラー切断処理
   */
@@ -280,18 +291,18 @@ void loop()
 
 void initializeOnBoardLEDs()
 {
-  pinMode(onBoardLEDs::No2, OUTPUT); // pinmode setup(PS4 Dual Shock Controller connection stats LED)
+  pinMode(onBoardLEDs::No4, OUTPUT); // pinmode setup(PS4 Dual Shock Controller connection stats LED)
 }
 
 void updateOnBoardLEDs()
 {
   if (PS4.connected())
   {
-    digitalWrite(onBoardLEDs::No2, HIGH);
+    digitalWrite(onBoardLEDs::No4, HIGH);
   }
   else
   {
-    digitalWrite(onBoardLEDs::No2, LOW);
+    digitalWrite(onBoardLEDs::No4, LOW);
   }
 }
 

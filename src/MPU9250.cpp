@@ -32,7 +32,7 @@ void MPU9250::calibration()
     Serial.println("IMU couldn'd initialized, check your wire connections.");
   }
 
-  for (int i = 0; i < 3000; i++)
+  for (int i = 0; i < 1000; i++)
   {
     int16_t raw_gx, raw_gy, raw_gz;
     int16_t raw_mx, raw_my, raw_mz;
