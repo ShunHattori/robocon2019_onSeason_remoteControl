@@ -129,7 +129,7 @@ void loop()
   kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
 
   static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
-  Serial.print(rawPWM[0]);
+  /*Serial.print(rawPWM[0]);
   Serial.print("\t");
   Serial.print(rawPWM[1]);
   Serial.print("\t");
@@ -138,7 +138,7 @@ void loop()
   Serial.print(getButtonClickOnce(DOWN));
   Serial.print("\t");
   Serial.println(millis() - timer);
-  timer = millis();
+  timer = millis();*/
   int drivePacket[Robot.DriveWheel * 2] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
