@@ -6,7 +6,8 @@ USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
-typedef enum statsLEDs {
+typedef enum statsLEDs
+{
   No1 = 22,
   No2,
   No3,
@@ -51,6 +52,7 @@ int *driverPWMOutput = new int[Robot.DriveWheel];
 double *rawPWM = new double[Robot.DriveWheel];
 bool communicationStatsLED[3];
 
+bool getButtonClickOnce(ButtonEnum);
 void initializeOnBoardLEDs();
 void updateOnBoardLEDs();
 inline void RCfilter(const int, const double, double *, double *, double *);
@@ -97,7 +99,7 @@ void setup()
 
 void loop()
 {
-  for (int i = 0; i < 1; i++)
+  for (int i = 0; i < 100; i++)
   {
     Usb.Task(); // running USB tasks
   }
@@ -108,9 +110,9 @@ void loop()
   /*
         足回り処理:コントローラー&IMU読み取り、MDD出力
   */
-  if (PS4.getButtonPress(OPTIONS) && PS4.getButtonClick(R1))
+  if (PS4.getButtonPress(OPTIONS) && getButtonClickOnce(R1))
     Robot.pwmMultiply += Robot.pwmMultiplyIncreaseRate;
-  else if (PS4.getButtonPress(OPTIONS) && PS4.getButtonClick(L1))
+  else if (PS4.getButtonPress(OPTIONS) && getButtonClickOnce(L1))
     Robot.pwmMultiply -= Robot.pwmMultiplyIncreaseRate;
   Robot.pwmMultiply = (Robot.pwmMultiply > 1.0) ? 1.0 : (Robot.pwmMultiply < 0) ? 0 : Robot.pwmMultiply;
 
@@ -126,13 +128,17 @@ void loop()
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
   kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
 
-  /*static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
+  static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
   Serial.print(rawPWM[0]);
   Serial.print("\t");
   Serial.print(rawPWM[1]);
   Serial.print("\t");
+  Serial.print(getButtonClickOnce(UP));
+  Serial.print("\t");
+  Serial.print(getButtonClickOnce(DOWN));
+  Serial.print("\t");
   Serial.println(millis() - timer);
-  timer = millis();*/
+  timer = millis();
   int drivePacket[Robot.DriveWheel * 2] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
@@ -172,11 +178,11 @@ void loop()
   static bool extendToggleFlag = 0;
   static int rotationMecaTartget = 0;
   static int armState[4]; //rightHand, leftHand, rightExtend, leftExtend
-  if (PS4.getButtonClick(SHARE))
+  if (getButtonClickOnce(SHARE))
     extendToggleFlag = !extendToggleFlag;
-  if (PS4.getButtonClick(R1))
+  if (getButtonClickOnce(R1))
     rotationMecaTartget += Robot.HeadRotationEncoderPulse;
-  else if (PS4.getButtonClick(L1))
+  else if (getButtonClickOnce(L1))
     rotationMecaTartget -= Robot.HeadRotationEncoderPulse;
   /*
   * 1はソレノイドバルブ右側オープン
@@ -186,42 +192,42 @@ void loop()
   */
   static unsigned long solenoidActivatedPeriod[4]; //バルブ開放開始時間保存用
   int MDD1Packet[10];
-  if (PS4.getButtonClick(CIRCLE))
+  if (getButtonClickOnce(CIRCLE))
   {
     armState[0] = 1;
     solenoidActivatedPeriod[0] = millis();
   }
-  else if (PS4.getButtonClick(CROSS))
+  else if (getButtonClickOnce(CROSS))
   {
     armState[0] = 2;
     solenoidActivatedPeriod[0] = millis();
   }
-  if (PS4.getButtonClick(TRIANGLE))
+  if (getButtonClickOnce(TRIANGLE))
   {
     armState[1] = 1;
     solenoidActivatedPeriod[1] = millis();
   }
-  else if (PS4.getButtonClick(SQUARE))
+  else if (getButtonClickOnce(SQUARE))
   {
     armState[1] = 2;
     solenoidActivatedPeriod[1] = millis();
   }
-  if (PS4.getButtonClick(UP))
+  if (getButtonClickOnce(UP))
   {
     armState[2] = 1;
     solenoidActivatedPeriod[2] = millis();
   }
-  else if (PS4.getButtonClick(RIGHT))
+  else if (getButtonClickOnce(RIGHT))
   {
     armState[2] = 2;
     solenoidActivatedPeriod[2] = millis();
   }
-  if (PS4.getButtonClick(LEFT))
+  if (getButtonClickOnce(LEFT))
   {
     armState[3] = 1;
     solenoidActivatedPeriod[3] = millis();
   }
-  else if (PS4.getButtonClick(DOWN))
+  else if (getButtonClickOnce(DOWN))
   {
     armState[3] = 2;
     solenoidActivatedPeriod[3] = millis();
@@ -285,11 +291,28 @@ void loop()
   */
   if (PS4.getButtonPress(PS))
   {
-    if (PS4.getButtonClick(OPTIONS))
+    if (getButtonClickOnce(OPTIONS))
     {
       PS4.disconnect();
     }
   }
+}
+
+bool getButtonClickOnce(ButtonEnum b)
+{
+  static bool previousButtonStats[16];
+  bool currentStats = PS4.getButtonPress(b);
+  if (!currentStats)
+  {
+    previousButtonStats[b] = currentStats;
+    return 0;
+  }
+  if (currentStats != previousButtonStats[b])
+  {
+    previousButtonStats[b] = currentStats;
+    return 1;
+  }
+  return 0;
 }
 
 void initializeOnBoardLEDs()
