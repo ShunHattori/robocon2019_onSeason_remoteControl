@@ -6,8 +6,7 @@ USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
-typedef enum statsLEDs
-{
+typedef enum statsLEDs {
   No1 = 22,
   No2,
   No3,
@@ -98,7 +97,7 @@ void setup()
 
 void loop()
 {
-  for (int i = 0; i < 100; i++)
+  for (int i = 0; i < 1; i++)
   {
     Usb.Task(); // running USB tasks
   }
@@ -148,7 +147,7 @@ void loop()
   */
   static int SensorRawData[5];
   static int SensorModifiedData[3];
-  //communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
+  communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
   for (int i = 0; i < 3; i++)
   {
     if (i < 2)
@@ -273,7 +272,7 @@ void loop()
     MDD1Packet[0] = 0;
     MDD1Packet[1] = 50;
   }
-  //communicationStatsLED[2] = MDD1.transmit(8, MDD1Packet);
+  communicationStatsLED[2] = MDD1.transmit(8, MDD1Packet);
   /*Serial.print(rotationMecaTartget);
   Serial.print(",");
   Serial.print(SensorModifiedData[2]);
