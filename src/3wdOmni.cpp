@@ -6,8 +6,7 @@ USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
-typedef enum statsLEDs
-{
+typedef enum statsLEDs {
   No1 = 22,
   No2,
   No3,
@@ -126,10 +125,17 @@ void loop()
   //static double modifiedPWM[2], prevPWM[2];
   //RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-  kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
-
-  static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
-  /*Serial.print(rawPWM[0]);
+  kinematics.getOutput(rawPWM[0], rawPWM[1], rawPWM[2], IMU.gyro_Yaw(), driverPWMOutput);
+  int MDD1Packet[Robot.DriveWheel * 2 + 2] = {
+      driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
+      driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
+      driverPWMOutput[1] < 0 ? 0 : driverPWMOutput[1],
+      driverPWMOutput[1] > 0 ? 0 : -driverPWMOutput[1],
+      driverPWMOutput[2] < 0 ? 0 : driverPWMOutput[2],
+      driverPWMOutput[2] > 0 ? 0 : -driverPWMOutput[2],
+  };
+  /*static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
+  Serial.print(rawPWM[0]);
   Serial.print("\t");
   Serial.print(rawPWM[1]);
   Serial.print("\t");
@@ -139,51 +145,39 @@ void loop()
   Serial.print("\t");
   Serial.println(millis() - timer);
   timer = millis();*/
-  int drivePacket[Robot.DriveWheel * 2] = {
-      driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
-      driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
-      driverPWMOutput[1] < 0 ? 0 : driverPWMOutput[1],
-      driverPWMOutput[1] > 0 ? 0 : -driverPWMOutput[1],
-      driverPWMOutput[2] < 0 ? 0 : driverPWMOutput[2],
-      driverPWMOutput[2] > 0 ? 0 : -driverPWMOutput[2],
-  };
-  communicationStatsLED[0] = MDD2.transmit(Robot.DriveWheel * 2, drivePacket);
+
   /*
         SBからセンサ値取得
   */
-  static int SensorRawData[5];
-  static int SensorModifiedData[3];
-  communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW, Encoder_HIGH, Encoder_LOW
-  for (int i = 0; i < 3; i++)
-  {
-    if (i < 2)
-    {
-      SensorModifiedData[i] = SensorRawData[i];
-      continue;
-    }
-    SensorModifiedData[i] = SensorRawData[i + 1] + (255 * abs((SensorRawData[i + 2] - 128)));
-    if (SensorRawData[i])
-      SensorModifiedData[i] = -SensorModifiedData[i];
-  }
-  /*
-    Serial.print(SensorModifiedData[0]);
-    Serial.print("\t");
-    Serial.print(SensorModifiedData[1]);
-    Serial.print("\t");
-    Serial.println(SensorModifiedData[2]);
-    */
+  static int SensorRawData[2];
+  communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW
+
   /*
         コントローラーとセンサの値から出力値を計算
   */
   static bool extendToggleFlag = 0;
-  static int rotationMecaTartget = 0;
-  static int armState[4]; //rightHand, leftHand, rightExtend, leftExtend
   if (getButtonClickOnce(SHARE))
     extendToggleFlag = !extendToggleFlag;
-  if (getButtonClickOnce(R1))
-    rotationMecaTartget += Robot.HeadRotationEncoderPulse;
-  else if (getButtonClickOnce(L1))
-    rotationMecaTartget -= Robot.HeadRotationEncoderPulse;
+  /*
+        MDD1データキューに上下機構の出力値を格納
+    */
+  if (extendToggleFlag && !SensorRawData[0])
+  { //展開したい&&上側のリミットスイッチが押されてない
+    MDD1Packet[6] = 50;
+    MDD1Packet[7] = 0;
+  }
+  else if (!extendToggleFlag && !SensorRawData[1])
+  { //縮小したい&&下側のリミットスイッチが押されてない
+    MDD1Packet[6] = 0;
+    MDD1Packet[7] = 50;
+  }
+  else
+  {
+    MDD1Packet[6] = 0;
+    MDD1Packet[7] = 0;
+  }
+  communicationStatsLED[0] = MDD1.transmit(Robot.DriveWheel * 2 + 2, MDD1Packet);
+
   /*
   * 1はソレノイドバルブ右側オープン
   * 2はソレノイドバルブ左側オープン
@@ -191,7 +185,8 @@ void loop()
   * この値をMDDに転送する
   */
   static unsigned long solenoidActivatedPeriod[4]; //バルブ開放開始時間保存用
-  int MDD1Packet[10];
+  static int armState[4];                          //rightHand, leftHand, rightExtend, leftExtend
+  int MDD2Packet[12];
   if (getButtonClickOnce(CIRCLE))
   {
     armState[0] = 1;
@@ -236,58 +231,17 @@ void loop()
   {
     if ((millis() - solenoidActivatedPeriod[i]) < Robot.solenoidValueOpenTime)
     {
-      MDD1Packet[i + 4] = armState[i];
+      MDD2Packet[i] = armState[i];
     }
     else
     {
-      MDD1Packet[i + 4] = 0;
+      MDD2Packet[i] = 0;
     }
   }
+  communicationStatsLED[2] = MDD2.transmit(4, MDD2Packet);
 
   /*
-        MDD1データキューに回転、上下機構の出力値を格納
-        TODO:ソレノイド処理を追加
-    */
-  /*if (extendToggleFlag && !SensorModifiedData[0])
-  { //展開したい&&上側のリミットスイッチが押されてない
-    MDD1Packet[0] = 50;
-    MDD1Packet[1] = 0;
-  }
-  else if (!extendToggleFlag && !SensorModifiedData[1])
-  { //縮小したい&&下側のリミットスイッチが押されてない
-    MDD1Packet[0] = 0;
-    MDD1Packet[1] = 50;
-  }
-  else
-  {
-    MDD1Packet[0] = 0;
-    MDD1Packet[1] = 0;
-  }*/
-  if (7 > (rotationMecaTartget - SensorModifiedData[2]) && (rotationMecaTartget - SensorModifiedData[2]) > -7)
-  {
-    MDD1Packet[0] = 0;
-    MDD1Packet[1] = 0;
-  }
-  else if ((rotationMecaTartget - SensorModifiedData[2]) > 0)
-  {
-    MDD1Packet[0] = 50;
-    MDD1Packet[1] = 0;
-  }
-  else if (0 > (rotationMecaTartget - SensorModifiedData[2]))
-  {
-    MDD1Packet[0] = 0;
-    MDD1Packet[1] = 50;
-  }
-  communicationStatsLED[2] = MDD1.transmit(8, MDD1Packet);
-  /*Serial.print(rotationMecaTartget);
-  Serial.print(",");
-  Serial.print(SensorModifiedData[2]);
-  Serial.print(",");
-  Serial.print(MDD1Packet[2]);
-  Serial.print(",");
-  Serial.println(MDD1Packet[3]);*/
-  /*
-        コントローラー切断処理
+  コントローラー切断処理
   */
   if (PS4.getButtonPress(PS))
   {
