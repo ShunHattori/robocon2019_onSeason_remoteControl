@@ -45,31 +45,35 @@ OmniKinematics3WD kinematics(Robot.MaxPWM);
 #include "UnitProtocol.hpp"
 UnitProtocol SB1(&Serial1); //SensorBoard
 UnitProtocol MDD1(&Serial2);
-UnitProtocol MDD2(&Serial3);
+UnitProtocol GenIO(&Serial3);
 
 int *driverPWMOutput = new int[Robot.DriveWheel];
 double *rawPWM = new double[Robot.DriveWheel];
 bool communicationStatsLED[3];
 
+int getbuttonClickDouble(ButtonEnum);
 bool getButtonClickOnce(ButtonEnum);
 void initializeOnBoardLEDs();
 void updateOnBoardLEDs();
 inline void RCfilter(const int, const double, double *, double *, double *);
 /*
     LeftStick:全方位移動    
+    RightStick:ロボットヘッディング変更(4方向)
     R2:右旋回
     L2:左旋回
     circle:右側開く
     triangle:左側開く
     cross:右側閉じる
     square:左側閉じる
-    up:右側展開
-    right:右側縮小
-    left:左側展開
-    down:左側縮小
+    up:none
+    right:none
+    left:none
+    down:none
     share(toggle):上下展開
-    R1:頭1/4右回転
-    L1:頭1/4左回転
+    R1x1:右腕伸ばす
+    R1x2(100ms):右腕縮小
+    L1x1:左腕伸ばす
+    L1x2(100ms):左腕縮小   
     OPTION + R1:最大速度上昇
     OPTION + L1:最大速度減少
     PS:接続
@@ -147,20 +151,15 @@ void loop()
   timer = millis();*/
 
   /*
-        SBからセンサ値取得
+      SBからセンサ値取得
+      コントローラーとセンサの値から出力値を計算
+      MDD1データキューに上下機構の出力値を格納
   */
   static int SensorRawData[2];
-  communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW
-
-  /*
-        コントローラーとセンサの値から出力値を計算
-  */
   static bool extendToggleFlag = 0;
+  communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW
   if (getButtonClickOnce(SHARE))
     extendToggleFlag = !extendToggleFlag;
-  /*
-        MDD1データキューに上下機構の出力値を格納
-    */
   if (extendToggleFlag && !SensorRawData[0])
   { //展開したい&&上側のリミットスイッチが押されてない
     MDD1Packet[6] = 50;
@@ -182,11 +181,11 @@ void loop()
   * 1はソレノイドバルブ右側オープン
   * 2はソレノイドバルブ左側オープン
   * 時間経過後0を代入
-  * この値をMDDに転送する
+  * この値をGenIO基板に転送する
   */
   static unsigned long solenoidActivatedPeriod[4]; //バルブ開放開始時間保存用
   static int armState[4];                          //rightHand, leftHand, rightExtend, leftExtend
-  int MDD2Packet[12];
+  int GenIOPacket[4];
   if (getButtonClickOnce(CIRCLE))
   {
     armState[0] = 1;
@@ -206,6 +205,28 @@ void loop()
   {
     armState[1] = 2;
     solenoidActivatedPeriod[1] = millis();
+  }
+  int extendRightArmState = getbuttonClickDouble(R1);
+  if (extendRightArmState == 1)
+  {
+    armState[2] = 1;
+    solenoidActivatedPeriod[2] = millis();
+  }
+  else if (extendRightArmState == 2)
+  {
+    armState[2] = 2;
+    solenoidActivatedPeriod[2] = millis();
+  }
+  int extendLeftArmState = getbuttonClickDouble(L1);
+  if (extendLeftArmState == 1)
+  {
+    armState[3] = 1;
+    solenoidActivatedPeriod[3] = millis();
+  }
+  else if (extendLeftArmState == 2)
+  {
+    armState[3] = 2;
+    solenoidActivatedPeriod[3] = millis();
   }
   if (getButtonClickOnce(UP))
   {
@@ -229,16 +250,17 @@ void loop()
   }
   for (int i = 0; i < 4; i++)
   {
-    if ((millis() - solenoidActivatedPeriod[i]) < Robot.solenoidValueOpenTime)
+
+    if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? Robot.solenoidValueOpenTime : Robot.solenoidValueOpenTime * 2))
     {
-      MDD2Packet[i] = armState[i];
+      GenIOPacket[i] = armState[i];
     }
     else
     {
-      MDD2Packet[i] = 0;
+      GenIOPacket[i] = 0;
     }
   }
-  communicationStatsLED[2] = MDD2.transmit(4, MDD2Packet);
+  communicationStatsLED[2] = GenIO.transmit(4, GenIOPacket);
 
   /*
   コントローラー切断処理
@@ -249,6 +271,36 @@ void loop()
     {
       PS4.disconnect();
     }
+  }
+}
+
+int getbuttonClickDouble(ButtonEnum b)
+{
+  static long samplingStartedTime[16];
+  static bool isSampling[16], buttonStatus[16];
+  constexpr int doubleClickSamplingTime = 200;
+  buttonStatus[b] = getButtonClickOnce(b);
+  if (buttonStatus[b] && !isSampling[b])
+  {
+    isSampling[b] = 1;
+    samplingStartedTime[b] = millis();
+    return 0;
+  }
+  if (!isSampling[b])
+    return 0;
+  if ((millis() - samplingStartedTime[b]) < doubleClickSamplingTime)
+  {
+    if (buttonStatus[b])
+    {
+      isSampling[b] = 0;
+      return 2;
+    }
+    return 0;
+  }
+  if ((millis() - samplingStartedTime[b]) > doubleClickSamplingTime)
+  {
+    isSampling[b] = 0;
+    return 1;
   }
 }
 
