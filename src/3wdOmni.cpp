@@ -129,7 +129,7 @@ void loop()
   //static double modifiedPWM[2], prevPWM[2];
   //RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-  kinematics.getOutput(rawPWM[0], rawPWM[1], rawPWM[2], IMU.gyro_Yaw(), driverPWMOutput);
+  kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
   int MDD1Packet[Robot.DriveWheel * 2 + 2] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
@@ -228,29 +228,24 @@ void loop()
     armState[3] = 2;
     solenoidActivatedPeriod[3] = millis();
   }
-  if (getButtonClickOnce(UP))
+  static int jammingSequenceFlag[2];
+  static int jammingSequenceState[2];
+  static unsigned long jammingSequenceTime[2];
+  if (getButtonClickOnce(UP) && !jammingSequenceFlag[0])
   {
-    armState[2] = 1;
-    solenoidActivatedPeriod[2] = millis();
+    jammingSequenceFlag[0] = 1;
+    jammingSequenceState[0] = 1;
+    jammingSequenceTime[0] = millis();
   }
-  else if (getButtonClickOnce(RIGHT))
+  else if (getButtonClickOnce(DOWN) && !jammingSequenceFlag[1])
   {
-    armState[2] = 2;
-    solenoidActivatedPeriod[2] = millis();
+    jammingSequenceFlag[1] = 1;
+    jammingSequenceState[1] = 1;
+    jammingSequenceTime[1] = millis();
   }
-  if (getButtonClickOnce(LEFT))
-  {
-    armState[3] = 1;
-    solenoidActivatedPeriod[3] = millis();
-  }
-  else if (getButtonClickOnce(DOWN))
-  {
-    armState[3] = 2;
-    solenoidActivatedPeriod[3] = millis();
-  }
+
   for (int i = 0; i < 4; i++)
   {
-
     if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? Robot.solenoidValueOpenTime : Robot.solenoidValueOpenTime * 2))
     {
       GenIOPacket[i] = armState[i];
@@ -258,6 +253,31 @@ void loop()
     else
     {
       GenIOPacket[i] = 0;
+    }
+  }
+  static bool initialFlag;
+  static unsigned long initialTime;
+  if (20 > PS4.getAnalogHat(RightHatY) && !initialFlag)
+  {
+    initialTime = millis();
+    initialFlag = 1;
+  }
+
+  if (initialFlag)
+  {
+    if ((millis() - initialTime) > 35)
+    {
+      GenIOPacket[2] = 0;
+      GenIOPacket[3] = 0;
+    }
+    else
+    {
+      GenIOPacket[2] = 1;
+      GenIOPacket[3] = 1;
+    }
+    if ((millis() - initialTime) > 1000)
+    {
+      initialFlag = 0;
     }
   }
   communicationStatsLED[2] = GenIO.transmit(4, GenIOPacket);
