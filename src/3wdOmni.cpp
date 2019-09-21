@@ -129,7 +129,7 @@ void loop()
   //static double modifiedPWM[2], prevPWM[2];
   //RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-  kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
+  kinematics.getOutput(rawPWM[0], rawPWM[1], rawPWM[2], IMU.gyro_Yaw(), driverPWMOutput);
   int MDD1Packet[Robot.DriveWheel * 2 + 2] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
