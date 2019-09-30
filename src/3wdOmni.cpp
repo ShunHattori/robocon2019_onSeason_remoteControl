@@ -126,10 +126,10 @@ void loop()
   if (-3.5 < rawPWM[1] && rawPWM[1] < 3.5)
     rawPWM[1] = 0;
 
-  //static double modifiedPWM[2], prevPWM[2];
-  //RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
+  static double modifiedPWM[2], prevPWM[2];
+  RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-  kinematics.getOutput(rawPWM[0], rawPWM[1], rawPWM[2], IMU.gyro_Yaw(), driverPWMOutput);
+  kinematics.getOutput(modifiedPWM[0], modifiedPWM[1], rawPWM[2], IMU.gyro_Yaw(), driverPWMOutput);
   int MDD1Packet[Robot.DriveWheel * 2 + 2] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
@@ -160,15 +160,10 @@ void loop()
   communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW
   if (getButtonClickOnce(SHARE))
     extendToggleFlag = !extendToggleFlag;
-  if (extendToggleFlag && !SensorRawData[0])
+  if (extendToggleFlag && !SensorRawData[1])
   { //展開したい&&上側のリミットスイッチが押されてない
-    MDD1Packet[6] = 50;
+    MDD1Packet[6] = 45;
     MDD1Packet[7] = 0;
-  }
-  else if (!extendToggleFlag && !SensorRawData[1])
-  { //縮小したい&&下側のリミットスイッチが押されてない
-    MDD1Packet[6] = 0;
-    MDD1Packet[7] = 50;
   }
   else
   {
@@ -176,7 +171,6 @@ void loop()
     MDD1Packet[7] = 0;
   }
   communicationStatsLED[0] = MDD1.transmit(Robot.DriveWheel * 2 + 2, MDD1Packet);
-
   /*
   * 1はソレノイドバルブ右側オープン
   * 2はソレノイドバルブ左側オープン
