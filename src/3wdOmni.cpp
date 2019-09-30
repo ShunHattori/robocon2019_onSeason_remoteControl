@@ -1,12 +1,14 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <avr/wdt.h>
 
 #include <PS4BT.h>
 USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
-typedef enum statsLEDs {
+typedef enum statsLEDs
+{
   No1 = 22,
   No2,
   No3,
@@ -56,6 +58,7 @@ bool getButtonClickOnce(ButtonEnum);
 void initializeOnBoardLEDs();
 void updateOnBoardLEDs();
 inline void RCfilter(const int, const double, double *, double *, double *);
+void watchDogReset(uint8_t);
 /*
     LeftStick:全方位移動    
     RightStick:ロボットヘッディング変更(4方向)
@@ -69,15 +72,15 @@ inline void RCfilter(const int, const double, double *, double *, double *);
     right:none
     left:none
     down:none
-    share(toggle):上下展開
+    OPTIONS(toggle):上下展開
     R1x1:右腕伸ばす
     R1x2(100ms):右腕縮小
     L1x1:左腕伸ばす
     L1x2(100ms):左腕縮小   
-    OPTION + R1:最大速度上昇
-    OPTION + L1:最大速度減少
+    SHARE + R1:最大速度上昇
+    SHARE + L1:最大速度減少
     PS:接続
-    PS + OPTION:切断
+    PS + OPTIONS:切断
  */
 
 void setup()
@@ -113,9 +116,9 @@ void loop()
   /*
         足回り処理:コントローラー&IMU読み取り、MDD出力
   */
-  if (PS4.getButtonPress(OPTIONS) && getButtonClickOnce(R1))
+  if (PS4.getButtonPress(SHARE) && getButtonClickOnce(R1))
     Robot.pwmMultiply += Robot.pwmMultiplyIncreaseRate;
-  else if (PS4.getButtonPress(OPTIONS) && getButtonClickOnce(L1))
+  else if (PS4.getButtonPress(SHARE) && getButtonClickOnce(L1))
     Robot.pwmMultiply -= Robot.pwmMultiplyIncreaseRate;
   Robot.pwmMultiply = (Robot.pwmMultiply > 1.0) ? 1.0 : (Robot.pwmMultiply < 0) ? 0 : Robot.pwmMultiply;
 
@@ -158,7 +161,7 @@ void loop()
   static int SensorRawData[2];
   static bool extendToggleFlag = 0;
   communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW
-  if (getButtonClickOnce(SHARE))
+  if (getButtonClickOnce(OPTIONS))
     extendToggleFlag = !extendToggleFlag;
   if (extendToggleFlag && !SensorRawData[1])
   { //展開したい&&上側のリミットスイッチが押されてない
@@ -281,6 +284,11 @@ void loop()
   */
   if (PS4.getButtonPress(PS))
   {
+    if (getButtonClickOnce(SHARE) && getButtonClickOnce(OPTIONS))
+    {
+      PS4.disconnect();
+      watchDogReset(WDTO_30MS);
+    }
     if (getButtonClickOnce(OPTIONS))
     {
       PS4.disconnect();
@@ -386,4 +394,11 @@ inline void RCfilter(const int arraySize, const double filterIntensity, double *
     arrayToContain[i] = (filterIntensity * prevFilteredData[i]) + ((1 - filterIntensity) * rawDataArray[i]);
     prevFilteredData[i] = arrayToContain[i];
   }
+}
+
+void watchDogReset(uint8_t prescaller)
+{
+  wdt_enable(prescaller);
+  for (;;)
+    ;
 }
