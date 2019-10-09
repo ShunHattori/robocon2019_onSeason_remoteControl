@@ -7,8 +7,7 @@ USB Usb;
 BTD Btd(&Usb);
 PS4BT PS4(&Btd);
 
-typedef enum statsLEDs
-{
+typedef enum statsLEDs {
   No1 = 22,
   No2,
   No3,
@@ -36,8 +35,8 @@ struct parameter
   const int HeadRotationEncoderPulse = 147;
   const double RCfilterIntensity = 0;
   const double pwmMultiplyIncreaseRate = 0.05;
-  const double solenoidValueOpenTime = 200; //in ms
-  double pwmMultiply = 0.3;
+  const double solenoidValueOpenTime = 250; //in ms
+  double pwmMultiply = 0.31;
   bool reversed = 0;
 } Robot;
 
@@ -59,6 +58,7 @@ void initializeOnBoardLEDs();
 void updateOnBoardLEDs();
 inline void RCfilter(const int, const double, double *, double *, double *);
 void watchDogReset(uint8_t);
+bool dengerKeybinds();
 /*
     LeftStick:全方位移動    
     RightStick:ロボットヘッディング変更(4方向)
@@ -113,6 +113,9 @@ void loop()
   updateOnBoardLEDs();
   if (!PS4.connected()) //未接続の場合以下の処理を弾く
     return;
+
+  if (dengerKeybinds()) //PSボタンが押されたらすべての以下の処理を弾く
+    return;
   /*
         足回り処理:コントローラー&IMU読み取り、MDD出力
   */
@@ -130,9 +133,9 @@ void loop()
     rawPWM[1] = 0;
 
   static double modifiedPWM[2], prevPWM[2];
-  RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
+  //RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-  kinematics.getOutput(modifiedPWM[0], modifiedPWM[1], rawPWM[2], IMU.gyro_Yaw(), driverPWMOutput);
+  kinematics.getOutput(rawPWM[0], rawPWM[1], rawPWM[2], IMU.gyro_Yaw(), driverPWMOutput);
   int MDD1Packet[Robot.DriveWheel * 2 + 2] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
@@ -278,22 +281,6 @@ void loop()
     }
   }
   communicationStatsLED[2] = GenIO.transmit(4, GenIOPacket);
-
-  /*
-  コントローラー切断処理
-  */
-  if (PS4.getButtonPress(PS))
-  {
-    if (getButtonClickOnce(SHARE) && getButtonClickOnce(OPTIONS))
-    {
-      PS4.disconnect();
-      watchDogReset(WDTO_30MS);
-    }
-    if (getButtonClickOnce(OPTIONS))
-    {
-      PS4.disconnect();
-    }
-  }
 }
 
 int getbuttonClickDouble(ButtonEnum b)
@@ -399,6 +386,33 @@ inline void RCfilter(const int arraySize, const double filterIntensity, double *
 void watchDogReset(uint8_t prescaller)
 {
   wdt_enable(prescaller);
-  for (;;)
-    ;
+  while (1)
+  {
+  }
+}
+
+bool dengerKeybinds()
+{
+  if (!PS4.getButtonPress(PS))
+  {
+    return 0;
+  }
+  if (PS4.getButtonPress(SHARE) && PS4.getButtonPress(OPTIONS))
+  {
+    PS4.disconnect();
+    PS4.setLed(Purble);
+    for (int i = 0; i < 200; i++)
+    {
+      Usb.Task(); // running USB tasks
+      _delay_ms(1);
+    }
+    watchDogReset(WDTO_15MS);
+    return 0;
+  }
+  if (PS4.getButtonPress(OPTIONS))
+  {
+    PS4.disconnect();
+    return 0;
+  }
+  return 1;
 }
