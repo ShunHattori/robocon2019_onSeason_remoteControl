@@ -1,13 +1,10 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <avr/wdt.h>
+#include "PWMfrequency.h"
 
-#include <PS4BT.h>
-USB Usb;
-BTD Btd(&Usb);
-PS4BT PS4(&Btd);
-
-typedef enum statsLEDs {
+typedef enum statsLEDs
+{
   No1 = 22,
   No2,
   No3,
@@ -17,59 +14,64 @@ typedef enum statsLEDs {
 
 struct
 {
-  long HardwareSerial = 256000;
-  int SoftwareSerial = 38400;
-  long I2C = 400000;
-} SerialBaud;
+  const int armUpDownCW = 8;
+  const int armUpDownCCW = 7;
+} RobotArmMotorPin;
 
-#define USING_9DOF_IMU
-#ifdef USING_9DOF_IMU
-#include "MPU9250.h"
-MPU9250 IMU(SerialBaud.I2C);
-#endif // USING_9DOF_IMU
+struct
+{
+  const long HardwareSerial = 256000; //256kHz
+  const int SoftwareSerial = 38400;
+  const long I2C = 400000; //400kHz
+} SerialBaud;
 
 struct parameter
 {
   const int MaxPWM = 250;
-  const int DriveWheel = 3;
-  const int HeadRotationEncoderPulse = 147;
   const double RCfilterIntensity = 0;
   const double pwmMultiplyIncreaseRate = 0.05;
   const double solenoidValueOpenTime = 250; //in ms
   double pwmMultiply = 0.31;
-  bool reversed = 0;
-} Robot;
+} RobotParam;
+
+#include <PS4BT.h>
+USB Usb;
+BTD Btd(&Usb);
+PS4BT PS4(&Btd);
+
+#include "MPU9250.h"
+MPU9250 IMU(SerialBaud.I2C);
 
 #include "OmniKinematics3WD.h"
-OmniKinematics3WD kinematics(Robot.MaxPWM);
+OmniKinematics3WD kinematics(RobotParam.MaxPWM);
 
 #include "UnitProtocol.hpp"
-UnitProtocol SB1(&Serial1); //SensorBoard
-UnitProtocol MDD1(&Serial2);
-UnitProtocol GenIO(&Serial3);
+UnitProtocol SB1(&Serial1);   //SensorBoard
+UnitProtocol MDD1(&Serial2);  //motorDriverDriver
+UnitProtocol GenIO(&Serial3); //Solenoid Valves
 
-int *driverPWMOutput = new int[Robot.DriveWheel];
-double *rawPWM = new double[Robot.DriveWheel];
+int *driverPWMOutput = new int[3];
+double *rawPWM = new double[3];
 bool communicationStatsLED[3];
 
 int getbuttonClickDouble(ButtonEnum);
 bool getButtonClickOnce(ButtonEnum);
 void initializeOnBoardLEDs();
 void updateOnBoardLEDs();
-inline void RCfilter(const int, const double, double *, double *, double *);
+void RCfilter(const int, const double, double *, double *, double *);
 void watchDogReset(uint8_t);
 bool dengerKeybinds();
 /*
     LeftStick:全方位移動    
-    RightStick:ロボットヘッディング変更(4方向)
+    RightStick:(↑)アームを少し伸ばす
     R2:右旋回
     L2:左旋回
     circle:右側開く
     triangle:左側開く
     cross:右側閉じる
     square:左側閉じる
-    up:none
-    right:none
+    up:アーム上昇
+    right:アーム下げる
     left:none
     down:none
     OPTIONS(toggle):上下展開
@@ -84,7 +86,11 @@ bool dengerKeybinds();
  */
 
 void setup()
-{ // put your setup code here, to run once:
+{
+  pinMode(RobotArmMotorPin.armUpDownCW, OUTPUT);
+  pinMode(RobotArmMotorPin.armUpDownCCW, OUTPUT);
+  setPwmFrequencyMEGA2560(RobotArmMotorPin.armUpDownCW, 1);
+  setPwmFrequencyMEGA2560(RobotArmMotorPin.armUpDownCCW, 1);
   Serial.begin(SerialBaud.HardwareSerial);
   Serial1.begin(SerialBaud.HardwareSerial);
   Serial2.begin(SerialBaud.HardwareSerial);
@@ -120,23 +126,23 @@ void loop()
         足回り処理:コントローラー&IMU読み取り、MDD出力
   */
   if (PS4.getButtonPress(SHARE) && getButtonClickOnce(R1))
-    Robot.pwmMultiply += Robot.pwmMultiplyIncreaseRate;
+    RobotParam.pwmMultiply += RobotParam.pwmMultiplyIncreaseRate;
   else if (PS4.getButtonPress(SHARE) && getButtonClickOnce(L1))
-    Robot.pwmMultiply -= Robot.pwmMultiplyIncreaseRate;
-  Robot.pwmMultiply = (Robot.pwmMultiply > 1.0) ? 1.0 : (Robot.pwmMultiply < 0) ? 0 : Robot.pwmMultiply;
+    RobotParam.pwmMultiply -= RobotParam.pwmMultiplyIncreaseRate;
+  RobotParam.pwmMultiply = (RobotParam.pwmMultiply > 1.0) ? 1.0 : (RobotParam.pwmMultiply < 0) ? 0 : RobotParam.pwmMultiply;
 
-  rawPWM[0] = (PS4.getAnalogHat(LeftHatX) - 127) * Robot.pwmMultiply;
+  rawPWM[0] = (PS4.getAnalogHat(LeftHatX) - 127) * RobotParam.pwmMultiply;
   if (-3.5 < rawPWM[0] && rawPWM[0] < 3.5)
     rawPWM[0] = 0;
-  rawPWM[1] = (PS4.getAnalogHat(LeftHatY) - 127) * Robot.pwmMultiply;
+  rawPWM[1] = (PS4.getAnalogHat(LeftHatY) - 127) * RobotParam.pwmMultiply;
   if (-3.5 < rawPWM[1] && rawPWM[1] < 3.5)
     rawPWM[1] = 0;
 
-  static double modifiedPWM[2], prevPWM[2];
-  //RCfilter(2, Robot.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
+  //static double modifiedPWM[2], prevPWM[2];
+  //RCfilter(2, RobotParam.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
   kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
-  int MDD1Packet[Robot.DriveWheel * 2 + 2] = {
+  int MDD1Packet[8] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
       driverPWMOutput[1] < 0 ? 0 : driverPWMOutput[1],
@@ -144,6 +150,7 @@ void loop()
       driverPWMOutput[2] < 0 ? 0 : driverPWMOutput[2],
       driverPWMOutput[2] > 0 ? 0 : -driverPWMOutput[2],
   };
+
   /*static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
   Serial.print(rawPWM[0]);
   Serial.print("\t");
@@ -163,7 +170,47 @@ void loop()
   */
   static int SensorRawData[2];
   static bool extendToggleFlag = 0;
-  communicationStatsLED[1] = SB1.receive(SensorRawData); //LimitSW, LimitSW
+  communicationStatsLED[1] = SB1.receive(SensorRawData); //arm, upper
+
+  static int UDArmState = 0; //state = -1:DOWN, 0:FREE, 1:UP;
+  static unsigned long UDArmUppingPeriod = 0;
+  bool stickState[2];
+  stickState[0] = (20 > PS4.getAnalogHat(RightHatY)) ? 1 : 0;
+  stickState[1] = (PS4.getAnalogHat(RightHatY) > 220) ? 1 : 0;
+  if (stickState[0] && SensorRawData[0])
+  {
+    UDArmState = 1;
+    UDArmUppingPeriod = millis();
+  }
+  if (stickState[1])
+  {
+    UDArmState = -1;
+  }
+  if (((millis() - UDArmUppingPeriod) > 1000) && UDArmState == 1)
+  {
+    UDArmState = 0;
+  }
+  if (SensorRawData[0] && UDArmState == -1)
+  {
+    UDArmState = 0;
+  }
+
+  if (UDArmState == 1)
+  {
+    analogWrite(RobotArmMotorPin.armUpDownCW, 50);
+    digitalWrite(RobotArmMotorPin.armUpDownCCW, LOW);
+  }
+  else if (UDArmState == -1)
+  {
+    digitalWrite(RobotArmMotorPin.armUpDownCW, LOW);
+    analogWrite(RobotArmMotorPin.armUpDownCCW, 50);
+  }
+  else
+  {
+    digitalWrite(RobotArmMotorPin.armUpDownCW, LOW);
+    digitalWrite(RobotArmMotorPin.armUpDownCCW, LOW);
+  }
+
   if (getButtonClickOnce(OPTIONS))
     extendToggleFlag = !extendToggleFlag;
   if (extendToggleFlag && !SensorRawData[1])
@@ -176,7 +223,7 @@ void loop()
     MDD1Packet[6] = 0;
     MDD1Packet[7] = 0;
   }
-  communicationStatsLED[0] = MDD1.transmit(Robot.DriveWheel * 2 + 2, MDD1Packet);
+  communicationStatsLED[0] = MDD1.transmit(8, MDD1Packet);
   /*
   * 1はソレノイドバルブ右側オープン
   * 2はソレノイドバルブ左側オープン
@@ -228,25 +275,10 @@ void loop()
     armState[3] = 2;
     solenoidActivatedPeriod[3] = millis();
   }
-  static int jammingSequenceFlag[2];
-  static int jammingSequenceState[2];
-  static unsigned long jammingSequenceTime[2];
-  if (getButtonClickOnce(UP) && !jammingSequenceFlag[0])
-  {
-    jammingSequenceFlag[0] = 1;
-    jammingSequenceState[0] = 1;
-    jammingSequenceTime[0] = millis();
-  }
-  else if (getButtonClickOnce(DOWN) && !jammingSequenceFlag[1])
-  {
-    jammingSequenceFlag[1] = 1;
-    jammingSequenceState[1] = 1;
-    jammingSequenceTime[1] = millis();
-  }
 
   for (int i = 0; i < 4; i++)
   {
-    if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? Robot.solenoidValueOpenTime : Robot.solenoidValueOpenTime * 2))
+    if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? RobotParam.solenoidValueOpenTime : RobotParam.solenoidValueOpenTime * 2))
     {
       GenIOPacket[i] = armState[i];
     }
@@ -255,17 +287,21 @@ void loop()
       GenIOPacket[i] = 0;
     }
   }
-  static bool initialFlag;
-  static unsigned long initialTime;
-  if (20 > PS4.getAnalogHat(RightHatY) && !initialFlag)
+
+  /*  
+  *   
+  */
+  static bool littleExtendFlag;
+  static unsigned long userButtonPressedTime;
+  if (getButtonClickOnce(UP) && !littleExtendFlag)
   {
-    initialTime = millis();
-    initialFlag = 1;
+    userButtonPressedTime = millis();
+    littleExtendFlag = 1;
   }
 
-  if (initialFlag)
+  if (littleExtendFlag)
   {
-    if ((millis() - initialTime) > 35)
+    if ((millis() - userButtonPressedTime) > 35)
     {
       GenIOPacket[2] = 0;
       GenIOPacket[3] = 0;
@@ -275,9 +311,9 @@ void loop()
       GenIOPacket[2] = 1;
       GenIOPacket[3] = 1;
     }
-    if ((millis() - initialTime) > 1000)
+    if ((millis() - userButtonPressedTime) > 1000)
     {
-      initialFlag = 0;
+      littleExtendFlag = 0;
     }
   }
   communicationStatsLED[2] = GenIO.transmit(4, GenIOPacket);
@@ -311,6 +347,7 @@ int getbuttonClickDouble(ButtonEnum b)
     isSampling[b] = 0;
     return 1;
   }
+  return 0;
 }
 
 bool getButtonClickOnce(ButtonEnum b)
@@ -374,7 +411,7 @@ void updateOnBoardLEDs()
   }
 }
 
-inline void RCfilter(const int arraySize, const double filterIntensity, double *arrayToContain, double *rawDataArray, double *prevFilteredData)
+void RCfilter(const int arraySize, const double filterIntensity, double *arrayToContain, double *rawDataArray, double *prevFilteredData)
 {
   for (int i = 0; i < arraySize; i++)
   {
@@ -400,7 +437,7 @@ bool dengerKeybinds()
   if (PS4.getButtonPress(SHARE) && PS4.getButtonPress(OPTIONS))
   {
     PS4.disconnect();
-    PS4.setLed(Purble);
+    PS4.setLed(0xF2, 0x46, 0x07);
     for (int i = 0; i < 200; i++)
     {
       Usb.Task(); // running USB tasks
