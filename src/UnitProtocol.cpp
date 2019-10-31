@@ -9,98 +9,98 @@ UnitProtocol::UnitProtocol(Stream *str)
   _isReceivable = 1;
 }
 
-int UnitProtocol::transmit(int arrayLenght, int *packet)
+int UnitProtocol::transmit(uint16_t arrayLenght, int *packet)
 {
   _arrayLenght = arrayLenght;
-  _myStream->write(ENQ); //送信してもいいですか
+  _myStream->write(ENQ);
   _watchDogComparePrevTime = millis();
-  while (1) //返事待ち
+  while (1)
   {
-    if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
+    if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
     {
-      return 0; //タイムアウト
+      return 0;
     }
-    if (!(_myStream->available())) //バッファに何もない
+    if (!(_myStream->available()))
     {
-      continue; //タイムアウト判定に戻る
+      continue;
     }
-    if (_myStream->read() == ACK) //バッファの中身がACKだったら
+    if (_myStream->read() == ACK)
     {
-      break; //次へゴー！
+      break;
     }
   }
-  _myStream->write(_arrayLenght); //データの長さはこれだけです。
+  _myStream->write(_arrayLenght);
   char _checkSum = 0;
-  for (int i = 0; i < arrayLenght; i++)
+  for (uint16_t i = 0; i < arrayLenght; i++)
   {
-    _myStream->write(packet[i]); //データの中身
-    _checkSum ^= packet[i];      //チェックサム計算
+    _myStream->write(packet[i]);
+    _checkSum ^= packet[i];
   }
-  _myStream->write(_checkSum); //これと比較して破損確認
+  _myStream->write(_checkSum);
   return 1;
 }
 
 int UnitProtocol::receive(int *variableToStore)
 {
-  if (!(_myStream->available())) //バッファに何もない
+  if (!(_myStream->available()))
   {
     return 0;
   }
-  if (_myStream->read() != ENQ) //中身がENQじゃなかったら
+  if (_myStream->read() != ENQ)
   {
     return 0;
   }
-  _myStream->write(ACK); //中身がENQじゃなかったらACK送信
-  int _incomingCounter = 0;
+  _myStream->write(ACK);
+  uint16_t _incomingCounter = 0;
   char _buffer[250], _bufferSum = 0;
   _watchDogComparePrevTime = millis();
-  while (1) //返事待ち
+  while (1)
   {
-    if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
+    if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
     {
-      return 0; //タイムアウト
+      return 0;
     }
-    if (!(_myStream->available())) //バッファに何もない
+    if (!(_myStream->available()))
     {
-      continue; //タイムアウト判定に戻る
+      continue;
     }
-    break; //次へゴー！
+    break;
   }
   _arrayLenght = _myStream->read();
-  for (int i = 0; i < _arrayLenght; i++)
+  for (uint16_t i = 0; i < _arrayLenght; i++)
   {
     _watchDogComparePrevTime = millis();
     while (1)
     {
-      if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
+      if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
       {
-        return 0; //タイムアウト
+        return 0;
       }
-      if (!(_myStream->available())) //バッファに何もない
+      if (!(_myStream->available()))
       {
-        continue; //タイムアウト判定に戻る
+        continue;
       }
       _buffer[_incomingCounter++] = _myStream->read();
-      break; //次へゴー！
+      break;
     }
   }
-  if (_arrayLenght != _incomingCounter) //あらかじめ教えられていたデータ長と実際に来たデータ長が違う場合を弾く
+  if (_arrayLenght != _incomingCounter)
   {
     return 0;
   }
-  for (int i = 0; i < _incomingCounter; i++)
+  for (uint16_t i = 0; i < _incomingCounter; i++)
   {
     _bufferSum ^= _buffer[i];
   }
   while (1)
   {
-    if ((millis() - _watchDogComparePrevTime) > _timeoutMs) //_timeoutMs間返答なし
+    if ((millis() - _watchDogComparePrevTime) > _timeoutMs)
     {
-      return 0; //タイムアウト
+      return 0;
     }
-    if (!(_myStream->available())) //バッファに何もない
+    if (!(_myStream->available()))
     {
-      continue; //タイムアウト判定に戻る
+      continue;
     }
     if (_myStream->read() != _bufferSum)
     {
@@ -108,14 +108,14 @@ int UnitProtocol::receive(int *variableToStore)
     }
     break;
   }
-  for (int i = 0; i < _incomingCounter; i++)
+  for (uint16_t i = 0; i < _incomingCounter; i++)
   {
     variableToStore[i] = _buffer[i];
   }
   return 1;
 }
 
-void UnitProtocol::setTimeout(int timeoutTimeInMs)
+void UnitProtocol::setTimeout(uint16_t timeoutTimeInMs)
 {
   _timeoutMs = timeoutTimeInMs;
 }

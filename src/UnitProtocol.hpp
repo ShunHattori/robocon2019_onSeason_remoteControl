@@ -13,18 +13,13 @@ class UnitProtocol
 {
 public:
   UnitProtocol(Stream *str);
-  int transmit(int arrayLenght, int *packet);
+  int transmit(uint16_t arrayLenght, int *packet);
   int receive(int *variableToStore);
-  void setTimeout(int timeoutTimeInMs);
-  void addDataFlowLED(int LEDPin, byte *whichDataFlow);
+  void setTimeout(uint16_t timeoutTimeInMs);
 
 private:
   Stream *_myStream;
   unsigned long _watchDogInitTime, _watchDogComparePrevTime;
-  int _TXLEDPin, _RXLEDPin;
-  int _timeoutMs, _arrayLenght;
+  uint16_t _timeoutMs, _arrayLenght;
   bool _isTransmittable, _isReceivable;
-
-  void ENQsend(byte data);
-  byte ACKreceive();
 };
