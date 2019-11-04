@@ -27,11 +27,11 @@ struct
 
 struct parameter
 {
-  const int MaxPWM = 250;
-  const double RCfilterIntensity = 0;
+  const int MaxPWM = 200;
+  const double RCfilterIntensity = 0.5;
   const double pwmMultiplyIncreaseRate = 0.05;
   const double solenoidValueOpenTime = 250; //in ms
-  double pwmMultiply = 0.31;
+  double pwmMultiply = 0.32;
 } RobotParam;
 
 #include <PS4BT.h>
@@ -61,6 +61,8 @@ void updateOnBoardLEDs();
 void RCfilter(const int, const double, double *, double *, double *);
 void watchDogReset(uint8_t);
 bool dengerKeybinds();
+void armLogic(int *);
+void jammingLogic(int *);
 /*
     LeftStick:全方位移動    
     RightStick:(↑)アームを少し伸ばす
@@ -138,10 +140,10 @@ void loop()
   if (-3.5 < rawPWM[1] && rawPWM[1] < 3.5)
     rawPWM[1] = 0;
 
-  //static double modifiedPWM[2], prevPWM[2];
-  //RCfilter(2, RobotParam.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
+  static double modifiedPWM[2], prevPWM[2];
+  RCfilter(2, RobotParam.RCfilterIntensity, modifiedPWM, rawPWM, prevPWM);
   rawPWM[2] = (PS4.getAnalogButton(R2) - PS4.getAnalogButton(L2)) * 0.04;
-  kinematics.getOutput(rawPWM[0], rawPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
+  kinematics.getOutput(modifiedPWM[0], modifiedPWM[1], -rawPWM[2], -IMU.gyro_Yaw(), driverPWMOutput);
   int MDD1Packet[8] = {
       driverPWMOutput[0] < 0 ? 0 : driverPWMOutput[0],
       driverPWMOutput[0] > 0 ? 0 : -driverPWMOutput[0],
@@ -186,7 +188,7 @@ void loop()
   {
     UDArmState = -1;
   }
-  if (((millis() - UDArmUppingPeriod) > 1000) && UDArmState == 1)
+  if (((millis() - UDArmUppingPeriod) > 1100) && UDArmState == 1)
   {
     UDArmState = 0;
   }
@@ -224,98 +226,10 @@ void loop()
     MDD1Packet[7] = 0;
   }
   communicationStatsLED[0] = MDD1.transmit(8, MDD1Packet);
-  /*
-  * 1はソレノイドバルブ右側オープン
-  * 2はソレノイドバルブ左側オープン
-  * 時間経過後0を代入
-  * この値をGenIO基板に転送する
-  */
-  static unsigned long solenoidActivatedPeriod[4]; //バルブ開放開始時間保存用
-  static int armState[4];                          //rightHand, leftHand, rightExtend, leftExtend
+
   int GenIOPacket[4];
-  if (getButtonClickOnce(CIRCLE))
-  {
-    armState[0] = 1;
-    solenoidActivatedPeriod[0] = millis();
-  }
-  else if (getButtonClickOnce(CROSS))
-  {
-    armState[0] = 2;
-    solenoidActivatedPeriod[0] = millis();
-  }
-  if (getButtonClickOnce(TRIANGLE))
-  {
-    armState[1] = 1;
-    solenoidActivatedPeriod[1] = millis();
-  }
-  else if (getButtonClickOnce(SQUARE))
-  {
-    armState[1] = 2;
-    solenoidActivatedPeriod[1] = millis();
-  }
-  int extendRightArmState = getbuttonClickDouble(R1);
-  if (extendRightArmState == 1)
-  {
-    armState[2] = 1;
-    solenoidActivatedPeriod[2] = millis();
-  }
-  else if (extendRightArmState == 2)
-  {
-    armState[2] = 2;
-    solenoidActivatedPeriod[2] = millis();
-  }
-  int extendLeftArmState = getbuttonClickDouble(L1);
-  if (extendLeftArmState == 1)
-  {
-    armState[3] = 1;
-    solenoidActivatedPeriod[3] = millis();
-  }
-  else if (extendLeftArmState == 2)
-  {
-    armState[3] = 2;
-    solenoidActivatedPeriod[3] = millis();
-  }
-
-  for (int i = 0; i < 4; i++)
-  {
-    if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? RobotParam.solenoidValueOpenTime : RobotParam.solenoidValueOpenTime * 2))
-    {
-      GenIOPacket[i] = armState[i];
-    }
-    else
-    {
-      GenIOPacket[i] = 0;
-    }
-  }
-
-  /*  
-  *   
-  */
-  static bool littleExtendFlag;
-  static unsigned long userButtonPressedTime;
-  if (getButtonClickOnce(UP) && !littleExtendFlag)
-  {
-    userButtonPressedTime = millis();
-    littleExtendFlag = 1;
-  }
-
-  if (littleExtendFlag)
-  {
-    if ((millis() - userButtonPressedTime) > 35)
-    {
-      GenIOPacket[2] = 0;
-      GenIOPacket[3] = 0;
-    }
-    else
-    {
-      GenIOPacket[2] = 1;
-      GenIOPacket[3] = 1;
-    }
-    if ((millis() - userButtonPressedTime) > 1000)
-    {
-      littleExtendFlag = 0;
-    }
-  }
+  armLogic(GenIOPacket);
+  jammingLogic(GenIOPacket); //overload IOPacket when its enabled
   communicationStatsLED[2] = GenIO.transmit(4, GenIOPacket);
 }
 
@@ -452,4 +366,176 @@ bool dengerKeybinds()
     return 0;
   }
   return 1;
+}
+
+void armLogic(int *IOPacket)
+{
+  /*
+  * 1はソレノイドバルブ右側オープン
+  * 2はソレノイドバルブ左側オープン
+  * 時間経過後0を代入
+  * この値をGenIO基板に転送する
+  */
+  static unsigned long solenoidActivatedPeriod[4]; //バルブ開放開始時間保存用
+  static int armState[4];                          //rightHand, leftHand, rightExtend, leftExtend
+  if (getButtonClickOnce(CIRCLE))
+  {
+    armState[0] = 1;
+    solenoidActivatedPeriod[0] = millis();
+  }
+  else if (getButtonClickOnce(CROSS))
+  {
+    armState[0] = 2;
+    solenoidActivatedPeriod[0] = millis();
+  }
+  if (getButtonClickOnce(TRIANGLE))
+  {
+    armState[1] = 1;
+    solenoidActivatedPeriod[1] = millis();
+  }
+  else if (getButtonClickOnce(SQUARE))
+  {
+    armState[1] = 2;
+    solenoidActivatedPeriod[1] = millis();
+  }
+  int extendRightArmState = getbuttonClickDouble(R1);
+  if (extendRightArmState == 1)
+  {
+    armState[2] = 1;
+    solenoidActivatedPeriod[2] = millis();
+  }
+  else if (extendRightArmState == 2)
+  {
+    armState[2] = 2;
+    solenoidActivatedPeriod[2] = millis();
+  }
+  int extendLeftArmState = getbuttonClickDouble(L1);
+  if (extendLeftArmState == 1)
+  {
+    armState[3] = 1;
+    solenoidActivatedPeriod[3] = millis();
+  }
+  else if (extendLeftArmState == 2)
+  {
+    armState[3] = 2;
+    solenoidActivatedPeriod[3] = millis();
+  }
+  for (int i = 0; i < 4; i++)
+  {
+    if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? RobotParam.solenoidValueOpenTime : RobotParam.solenoidValueOpenTime * 2))
+    {
+      IOPacket[i] = armState[i];
+    }
+    else
+    {
+      IOPacket[i] = 0;
+    }
+  }
+
+  static bool littleExtendFlag;
+  static unsigned long userButtonPressedTime;
+  if (getButtonClickOnce(UP) && !littleExtendFlag)
+  {
+    userButtonPressedTime = millis();
+    littleExtendFlag = 1;
+  }
+  if (littleExtendFlag)
+  {
+    if ((millis() - userButtonPressedTime) > 35)
+    {
+      IOPacket[2] = 0;
+      IOPacket[3] = 0;
+    }
+    else
+    {
+      IOPacket[2] = 1;
+      IOPacket[3] = 1;
+    }
+    if ((millis() - userButtonPressedTime) > 1000)
+    {
+      littleExtendFlag = 0;
+    }
+  }
+}
+
+void jammingLogic(int *IOPacket)
+{
+  static unsigned long jammingActivatedPeriod[2];
+  static unsigned int currentJammingSequenceState[2];                   //妨害シーケンスのどの段階にいるかを格納
+  if (getButtonClickOnce(RIGHT) && currentJammingSequenceState[0] == 0) //右ハンド妨害
+  {
+    jammingActivatedPeriod[0] = millis();
+    currentJammingSequenceState[0] = 1;
+  }
+  if (getButtonClickOnce(LEFT) && currentJammingSequenceState[1] == 0) //左ハンド妨害
+  {
+    jammingActivatedPeriod[1] = millis();
+    currentJammingSequenceState[1] = 1;
+  }
+  if (getbuttonClickDouble(RIGHT)) //右ハンド妨害強制終了
+  {
+    jammingActivatedPeriod[0] = millis();
+    currentJammingSequenceState[0] = 10;
+  }
+  if (getbuttonClickDouble(LEFT)) //左ハンド妨害強制終了
+  {
+    jammingActivatedPeriod[1] = millis();
+    currentJammingSequenceState[1] = 10;
+  }
+  for (int i = 0; i < 2; i++)
+  {
+    switch (currentJammingSequenceState[i])
+    {
+      case 1:
+        IOPacket[i] = 2;     //手先閉じる
+        IOPacket[i + 2] = 1; //ハンド伸ばす
+        if ((millis() - jammingActivatedPeriod[i]) > 500)
+        {
+          jammingActivatedPeriod[i] = millis();
+          currentJammingSequenceState[i]++;
+        }
+        break;
+      case 2:
+        IOPacket[i] = 1;     //手先開く
+        IOPacket[i + 2] = 0; //電磁弁閉める
+        if ((millis() - jammingActivatedPeriod[i]) > 250)
+        {
+          jammingActivatedPeriod[i] = millis();
+          currentJammingSequenceState[i]++;
+        }
+        break;
+      case 3:
+        IOPacket[i] = 0;     //電磁弁閉める
+        IOPacket[i + 2] = 2; //ハンド縮める
+        if ((millis() - jammingActivatedPeriod[i]) > 500)
+        {
+          jammingActivatedPeriod[i] = millis();
+          currentJammingSequenceState[i]++;
+        }
+        break;
+      case 4:
+        IOPacket[i] = 2;     //手先閉じる
+        IOPacket[i + 2] = 0; //電磁弁閉める
+        if ((millis() - jammingActivatedPeriod[i]) > 250)
+        {
+          jammingActivatedPeriod[i] = millis();
+          currentJammingSequenceState[i] = 0;
+          IOPacket[i] = 0; //電磁弁閉める
+        }
+        break;
+      case 10:               //強制終了
+        IOPacket[i] = 2;     //電磁弁閉める
+        IOPacket[i + 2] = 2; //電磁弁閉める
+        if ((millis() - jammingActivatedPeriod[i]) > 400)
+        {
+          jammingActivatedPeriod[i] = millis();
+          currentJammingSequenceState[i] = 0;
+          IOPacket[i] = 0;     //電磁弁閉める
+          IOPacket[i + 2] = 0; //電磁弁閉める
+        }
+        break;
+      default:
+        break;
+    }
+  }
 }

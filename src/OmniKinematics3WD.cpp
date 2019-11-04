@@ -17,8 +17,8 @@ void OmniKinematics3WD::getOutput(int x, int y, int yaw, float yawAngle, int pwm
   }
   else
   { //IMUがYAW軸を自動補正するとき
-    int outputYawPWM = (yawAngle - userBias) * 2;
-    if (-3 < outputYawPWM && outputYawPWM < 3)
+    int outputYawPWM = (yawAngle - userBias) * 2.5;
+    if (-3.5 < outputYawPWM && outputYawPWM < 3.5)
     {
       outputYawPWM = 0;
     }
