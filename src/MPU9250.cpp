@@ -34,61 +34,20 @@ void MPU9250::calibration()
 
   for (int i = 0; i < 1000; i++)
   {
-    int16_t raw_gx, raw_gy, raw_gz;
-    int16_t raw_mx, raw_my, raw_mz;
-    int16_t magdata[7];
+    int16_t raw_gz;
     int count = 0;
     Wire.beginTransmission(gyro_address);
-    Wire.write(reg_roll);
+    Wire.write(reg_yaw);
     Wire.endTransmission();
-    Wire.requestFrom(gyro_address, 6);
+    Wire.requestFrom(gyro_address, 2);
 
-    raw_gx = Wire.read() << 8 | Wire.read();
-    raw_gy = Wire.read() << 8 | Wire.read();
     raw_gz = Wire.read() << 8 | Wire.read();
 
-    Wire.beginTransmission(mag_address);
-    Wire.write(reg_mag);
-    Wire.endTransmission();
-    Wire.requestFrom(0x0c, 7);
-
-    while (Wire.available())
-    {
-      magdata[count++] = Wire.read();
-    }
-
-    if (!(magdata[6] & 0x08))
-    {
-      raw_mx = magdata[1] << 8 | magdata[0];
-      raw_my = magdata[3] << 8 | magdata[2];
-      raw_mz = magdata[5] << 8 | magdata[4];
-    }
-
-    offset_gx += raw_gx / 131.0;
-    offset_gy += raw_gy / 131.0;
     offset_gz += raw_gz / 131.0;
-    offset_mx += (double)raw_mx * 0.15;
-    offset_my += (double)raw_my * 0.15;
-    offset_mz += (double)raw_mz * 0.15;
   }
 
-  offset_gx /= 3000;
-  offset_gy /= 3000;
   offset_gz /= 3000;
-  offset_mx /= 3000;
-  offset_my /= 3000;
-  offset_mz /= 3000;
-  offset_mag = atan2(offset_mx, offset_my) * RAD_TO_DEG;
-  if (offset_mag >= 0)
-  {
-    offset_mag_plus = offset_mag;
-    offset_mag_minus = offset_mag - 180;
-  }
-  else
-  {
-    offset_mag_plus = offset_mag + 180;
-    offset_mag_minus = offset_mag;
-  }
+
   digitalWrite(LEDpin, HIGH);
 }
 
