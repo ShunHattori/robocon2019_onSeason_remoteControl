@@ -20,6 +20,11 @@ struct
 
 struct
 {
+  const int VROut = A0;
+} RobotArmVRPin;
+
+struct
+{
   const long HardwareSerial = 256000; //256kHz
   const int SoftwareSerial = 38400;
   const long I2C = 400000; //400kHz
@@ -50,6 +55,9 @@ UnitProtocol SB1(&Serial1);   //SensorBoard
 UnitProtocol MDD1(&Serial2);  //motorDriverDriver
 UnitProtocol GenIO(&Serial3); //Solenoid Valves
 
+#include "PIDController.h"
+PIDController VRPID(5, 0, 0);
+
 int *driverPWMOutput = new int[3];
 double *rawPWM = new double[3];
 bool communicationStatsLED[3];
@@ -61,8 +69,9 @@ void updateOnBoardLEDs();
 void RCfilter(const int, const double, double *, double *, double *);
 void watchDogReset(uint8_t);
 bool dengerKeybinds();
-void armLogic(int *);
-void jammingLogic(int *);
+void commonArmLogic(int *);
+void sequencedArmLogic(int *, bool);
+void jammingArmLogic(int *);
 /*
     LeftStick:全方位移動    
     RightStick:(↑)アームを少し伸ばす
@@ -91,6 +100,7 @@ void setup()
 {
   pinMode(RobotArmMotorPin.armUpDownCW, OUTPUT);
   pinMode(RobotArmMotorPin.armUpDownCCW, OUTPUT);
+  VRPID.setOutputLimit(50);
   setPwmFrequencyMEGA2560(RobotArmMotorPin.armUpDownCW, 1);
   setPwmFrequencyMEGA2560(RobotArmMotorPin.armUpDownCCW, 1);
   Serial.begin(SerialBaud.HardwareSerial);
@@ -175,22 +185,16 @@ void loop()
   communicationStatsLED[1] = SB1.receive(SensorRawData); //arm, upper
 
   static int UDArmState = 0; //state = -1:DOWN, 0:FREE, 1:UP;
-  static unsigned long UDArmUppingPeriod = 0;
   bool stickState[2];
   stickState[0] = (20 > PS4.getAnalogHat(RightHatY)) ? 1 : 0;
   stickState[1] = (PS4.getAnalogHat(RightHatY) > 220) ? 1 : 0;
   if (stickState[0] && SensorRawData[0])
   {
     UDArmState = 1;
-    UDArmUppingPeriod = millis();
   }
   if (stickState[1])
   {
     UDArmState = -1;
-  }
-  if (((millis() - UDArmUppingPeriod) > 1100) && UDArmState == 1)
-  {
-    UDArmState = 0;
   }
   if (SensorRawData[0] && UDArmState == -1)
   {
@@ -199,8 +203,10 @@ void loop()
 
   if (UDArmState == 1)
   {
-    analogWrite(RobotArmMotorPin.armUpDownCW, 50);
-    digitalWrite(RobotArmMotorPin.armUpDownCCW, LOW);
+    VRPID.update(787, analogRead(RobotArmVRPin.VROut));
+    int VRPIDPWM = VRPID.getTerm();
+    analogWrite(RobotArmMotorPin.armUpDownCCW, VRPIDPWM > 0 ? VRPIDPWM : 0); //ここをPIDで制御
+    analogWrite(RobotArmMotorPin.armUpDownCW, VRPIDPWM < 0 ? -VRPIDPWM : 0); //ここをPIDで制御
   }
   else if (UDArmState == -1)
   {
@@ -212,7 +218,11 @@ void loop()
     digitalWrite(RobotArmMotorPin.armUpDownCW, LOW);
     digitalWrite(RobotArmMotorPin.armUpDownCCW, LOW);
   }
-
+  /*Serial.print(analogRead(RobotArmVRPin.VROut));
+  Serial.print('\t');
+  Serial.print(VRPID.getTerm());
+  Serial.print('\r');
+  Serial.print('\n');*/
   if (getButtonClickOnce(OPTIONS))
     extendToggleFlag = !extendToggleFlag;
   if (extendToggleFlag && !SensorRawData[1])
@@ -228,8 +238,9 @@ void loop()
   communicationStatsLED[0] = MDD1.transmit(8, MDD1Packet);
 
   int GenIOPacket[4];
-  armLogic(GenIOPacket);
-  jammingLogic(GenIOPacket); //overload IOPacket when its enabled
+  commonArmLogic(GenIOPacket);
+  jammingArmLogic(GenIOPacket); //overload IOPacket when its enabled
+  sequencedArmLogic(GenIOPacket, UDArmState);
   communicationStatsLED[2] = GenIO.transmit(4, GenIOPacket);
 }
 
@@ -237,7 +248,7 @@ int getbuttonClickDouble(ButtonEnum b)
 {
   static long samplingStartedTime[16];
   static bool isSampling[16], buttonStatus[16];
-  constexpr int doubleClickSamplingTime = 200;
+  constexpr int doubleClickSamplingTime = 180;
   buttonStatus[b] = getButtonClickOnce(b);
   if (buttonStatus[b] && !isSampling[b])
   {
@@ -368,7 +379,7 @@ bool dengerKeybinds()
   return 1;
 }
 
-void armLogic(int *IOPacket)
+void commonArmLogic(int *IOPacket)
 {
   /*
   * 1はソレノイドバルブ右側オープン
@@ -422,7 +433,7 @@ void armLogic(int *IOPacket)
   }
   for (int i = 0; i < 4; i++)
   {
-    if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? RobotParam.solenoidValueOpenTime : RobotParam.solenoidValueOpenTime * 2))
+    if ((millis() - solenoidActivatedPeriod[i]) < (i < 2 ? RobotParam.solenoidValueOpenTime : RobotParam.solenoidValueOpenTime * 2 + 120))
     {
       IOPacket[i] = armState[i];
     }
@@ -458,7 +469,68 @@ void armLogic(int *IOPacket)
   }
 }
 
-void jammingLogic(int *IOPacket)
+void sequencedArmLogic(int *IOPacket, bool UDState) //buttonstate contain CIRCLE AND TRIANGLE DOUBLE PRESS STATE
+{
+  if (UDState)
+  {
+    return;
+  }
+  static unsigned long userButtonPressedTime[2];
+  static unsigned int armLogicState[2];
+  if (220 < PS4.getAnalogHat(RightHatX))
+  {
+    userButtonPressedTime[0] = millis();
+    armLogicState[0] = 1;
+  }
+  if (PS4.getAnalogHat(RightHatX) < 20)
+  {
+    userButtonPressedTime[1] = millis();
+    armLogicState[1] = 1;
+  }
+  for (int i = 0; i < 2; i++)
+  {
+    switch (armLogicState[i])
+    {
+      case 1:
+        IOPacket[i + 2] = 1; //ハンド伸ばす
+        if ((millis() - userButtonPressedTime[i]) > 350)
+        {
+          userButtonPressedTime[i] = millis();
+          armLogicState[i]++;
+        }
+        break;
+      case 2:
+        IOPacket[i] = 2; //手先閉める
+        if ((millis() - userButtonPressedTime[i]) > 200)
+        {
+          userButtonPressedTime[i] = millis();
+          armLogicState[i]++;
+        }
+        break;
+      case 3:
+        IOPacket[i + 2] = 0; //電磁弁閉める
+        if ((millis() - userButtonPressedTime[i]) > 250)
+        {
+          userButtonPressedTime[i] = millis();
+          armLogicState[i]++;
+        }
+        break;
+      case 4:
+        IOPacket[i] = 0;     //電磁弁閉める
+        IOPacket[i + 2] = 2; //ハンド縮める
+        if ((millis() - userButtonPressedTime[i]) > 600)
+        {
+          userButtonPressedTime[i] = millis();
+          armLogicState[i] = 0;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+void jammingArmLogic(int *IOPacket)
 {
   static unsigned long jammingActivatedPeriod[2];
   static unsigned int currentJammingSequenceState[2];                   //妨害シーケンスのどの段階にいるかを格納
@@ -489,7 +561,7 @@ void jammingLogic(int *IOPacket)
       case 1:
         IOPacket[i] = 2;     //手先閉じる
         IOPacket[i + 2] = 1; //ハンド伸ばす
-        if ((millis() - jammingActivatedPeriod[i]) > 500)
+        if ((millis() - jammingActivatedPeriod[i]) > 600)
         {
           jammingActivatedPeriod[i] = millis();
           currentJammingSequenceState[i]++;
@@ -507,7 +579,7 @@ void jammingLogic(int *IOPacket)
       case 3:
         IOPacket[i] = 0;     //電磁弁閉める
         IOPacket[i + 2] = 2; //ハンド縮める
-        if ((millis() - jammingActivatedPeriod[i]) > 500)
+        if ((millis() - jammingActivatedPeriod[i]) > 600)
         {
           jammingActivatedPeriod[i] = millis();
           currentJammingSequenceState[i]++;
