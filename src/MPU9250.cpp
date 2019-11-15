@@ -48,7 +48,6 @@ void MPU9250::calibration()
 
 void MPU9250::update()
 {
-  static double yaw = 0;
   Wire.beginTransmission(gyro_address);
   Wire.write(reg_yaw);
   Wire.endTransmission(false);
