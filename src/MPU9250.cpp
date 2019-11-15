@@ -22,20 +22,14 @@ void MPU9250::calibration()
   Wire.write(0x02);
   Wire.endTransmission();
 
-  Wire.beginTransmission(mag_address);
-  Wire.write(0x0A);
-  Wire.write(0X06);
-  Wire.endTransmission();
-
   while (read_I2C(reg_WAI) != 0x71)
   {
     Serial.println("IMU couldn'd initialized, check your wire connections.");
   }
 
-  for (int i = 0; i < 1000; i++)
+  for (int i = 0; i < 3000; i++)
   {
     int16_t raw_gz;
-    int count = 0;
     Wire.beginTransmission(gyro_address);
     Wire.write(reg_yaw);
     Wire.endTransmission();
@@ -43,95 +37,18 @@ void MPU9250::calibration()
 
     raw_gz = Wire.read() << 8 | Wire.read();
 
-    offset_gz += raw_gz / 131.0;
+    offset_gz += raw_gz;
   }
 
-  offset_gz /= 3000;
+  offset_gz /= 3000 * 131.0f;
 
   digitalWrite(LEDpin, HIGH);
 }
 
-double MPU9250::complement_Yaw()
+
+void MPU9250::update()
 {
-  gyro_yaw = gyro_Yaw();
-  compass_angle = compass_Yaw();
-  complement_angle = 0.9 * gyro_yaw + 0.1 * compass_angle;
-  return complement_angle;
-}
-
-void MPU9250::read_accel(double *accel_roll, double *accel_pitch)
-{
-  Wire.beginTransmission(gyro_address);
-  Wire.write(reg_accel_X);
-  Wire.endTransmission();
-  Wire.requestFrom(gyro_address, 6);
-  if (Wire.available())
-  {
-    ax = Wire.read() << 8 | Wire.read();
-    ay = Wire.read() << 8 | Wire.read();
-    az = Wire.read() << 8 | Wire.read();
-  }
-  *accel_roll = atan2(ay, az);
-  *accel_pitch = atan2(ax, sqrt(pow(ay, 2) + pow(az, 2)));
-}
-
-void MPU9250::read_gyro(double *gyro_roll, double *gyro_pitch, double *gyro_yaw)
-{
-  static double roll = 0, pitch = 0, yaw = 0;
-
-  Wire.beginTransmission(gyro_address);
-  Wire.write(reg_roll);
-  Wire.endTransmission(false);
-  Wire.requestFrom(gyro_address, 6, true);
-
-  if (Wire.available())
-  {
-    gx = Wire.read() << 8 | Wire.read();
-    gy = Wire.read() << 8 | Wire.read();
-    gz = Wire.read() << 8 | Wire.read();
-  }
-
-  elapsed_time = millis() - preterit_time;
-  preterit_time = millis();
-
-  dps_gx = (double)gx / 131;
-  dps_gy = (double)gy / 131;
-  dps_gz = (double)gz / 131;
-
-  read_accel(&accel_roll, &accel_pitch);
-  accel_roll = accel_roll * RAD_TO_DEG;
-  accel_pitch = accel_pitch * RAD_TO_DEG;
-  if (!(dps_gx - offset_gx < 1 && dps_gx - offset_gx > -1))
-    roll += (dps_gx - offset_gx) * elapsed_time * 0.001;
-
-  if (!(dps_gy - offset_gy < 1 && dps_gy - offset_gy > -1))
-    pitch += (dps_gy - offset_gy) * elapsed_time * 0.001;
-
-  if (!(dps_gz - offset_gz < 1 && dps_gz - offset_gz > -1))
-    yaw += (dps_gz - offset_gz) * elapsed_time * 0.001;
-
-  *gyro_roll = 0.995 * roll + (0.005 * accel_roll);
-  *gyro_pitch = 0.995 * pitch + (0.005 * accel_pitch);
-
-  if (yaw > 180)
-  {
-    *gyro_yaw = -180 + (yaw - 180);
-    if (yaw > 360)
-      yaw = yaw - 360;
-  }
-  else if (yaw < -180)
-  {
-    *gyro_yaw = 180 + (yaw + 180);
-    if (yaw < 360)
-      yaw = yaw + 360;
-  }
-  else
-    *gyro_yaw = yaw;
-}
-
-double MPU9250::gyro_Yaw()
-{
-  static double yaw = 0, yaw_angle = 0;
+  static double yaw = 0;
   Wire.beginTransmission(gyro_address);
   Wire.write(reg_yaw);
   Wire.endTransmission(false);
@@ -148,90 +65,4 @@ double MPU9250::gyro_Yaw()
   dps_gz = (double)gz / 131;
   if (!(dps_gz - offset_gz < 1 && dps_gz - offset_gz > -1))
     yaw += (dps_gz - offset_gz) * elapsed_time * 0.001;
-  return yaw;
-  /*if (yaw > 180)
-  {
-    yaw_angle = -180 + (yaw - 180);
-    if (yaw > 360)
-      yaw = yaw - 360;
-  }
-  else if (yaw < -180)
-  {
-    yaw_angle = 180 + (yaw + 180);
-    if (yaw < -360)
-      yaw = yaw + 360;
-  }
-  else
-    yaw_angle = yaw;
-  return yaw_angle;*/
-}
-
-void MPU9250::read_compass(double *MX, double *MY, double *MZ)
-{
-  int count = 0;
-  Wire.beginTransmission(mag_address);
-  Wire.write(reg_mag);
-  Wire.endTransmission();
-  Wire.requestFrom(0x0C, 7);
-
-  while (Wire.available())
-  {
-    compassData[count++] = Wire.read();
-  }
-  if (compassData[6] != 0x18)
-  {
-    mx = compassData[1] << 8 | compassData[0];
-    my = compassData[3] << 8 | compassData[2];
-    mz = compassData[5] << 8 | compassData[4];
-    tmx = (double)mx * 0.15;
-    tmy = (double)my * 0.15;
-    tmz = (double)mz * 0.15;
-  }
-
-  *MX = tmx;
-  *MY = tmy;
-  *MZ = tmz;
-}
-
-double MPU9250::compass_Yaw()
-{
-  double yaw;
-  int count = 0;
-  Wire.beginTransmission(mag_address);
-  Wire.write(reg_mag);
-  Wire.endTransmission();
-  Wire.requestFrom(0x0C, 7);
-
-  while (Wire.available())
-  {
-    compassData[count++] = Wire.read();
-  }
-  if (compassData[6] != 0x18)
-  {
-    mx = compassData[1] << 8 | compassData[0];
-    my = compassData[3] << 8 | compassData[2];
-    tmx = (double)mx * 0.15;
-    tmy = (double)my * 0.15;
-  }
-  yaw = atan2(tmx, tmy) * RAD_TO_DEG;
-
-  Serial.print(yaw);
-  if (offset_mag >= 0)
-  {
-    Serial.print(yaw - offset_mag_plus);
-    if (yaw - offset_mag_plus < -180)
-      yaw = 180 + (yaw - offset_mag_minus);
-    else
-      yaw = yaw - offset_mag_plus;
-  }
-  else
-  {
-    if (yaw - offset_mag_minus > 180)
-      yaw = -180 + (yaw - offset_mag_plus);
-    else
-      yaw = (yaw - offset_mag_minus);
-  }
-  Serial.print("comapss_yaw = ");
-  Serial.print(yaw);
-  return yaw;
 }
