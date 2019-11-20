@@ -471,10 +471,6 @@ void commonArmLogic(int *IOPacket)
 
 void sequencedArmLogic(int *IOPacket, bool UDState) //buttonstate contain CIRCLE AND TRIANGLE DOUBLE PRESS STATE
 {
-  if (UDState)
-  {
-    return;
-  }
   static unsigned long userButtonPressedTime[2];
   static unsigned int armLogicState[2];
   if (220 < PS4.getAnalogHat(RightHatX))
@@ -492,6 +488,10 @@ void sequencedArmLogic(int *IOPacket, bool UDState) //buttonstate contain CIRCLE
     switch (armLogicState[i])
     {
       case 1:
+        if (UDState) //アームシーケンスの最初の動作(ハンド伸ばす)の時だけ動作を無効化する
+        {
+          return;
+        }
         IOPacket[i + 2] = 1; //ハンド伸ばす
         if ((millis() - userButtonPressedTime[i]) > 350)
         {

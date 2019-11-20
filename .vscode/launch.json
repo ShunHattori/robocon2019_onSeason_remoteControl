@@ -12,8 +12,8 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/.pio/build/megaADK/firmware.elf",
-            "toolchainBinDir": "C:/Users/Yuki/.platformio/packages/toolchain-atmelavr/bin",
+            "executable": "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/.pio/build/megaADK/firmware.elf",
+            "toolchainBinDir": "C:/Users/USER/.platformio/packages/toolchain-atmelavr/bin",
             "preLaunchTask": {
                 "type": "PlatformIO",
                 "task": "Pre-Debug"
@@ -24,8 +24,8 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/.pio/build/megaADK/firmware.elf",
-            "toolchainBinDir": "C:/Users/Yuki/.platformio/packages/toolchain-atmelavr/bin",
+            "executable": "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/.pio/build/megaADK/firmware.elf",
+            "toolchainBinDir": "C:/Users/USER/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart"
         }
     ]

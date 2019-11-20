@@ -6,33 +6,33 @@
         {
             "name": "Win32",
             "includePath": [
-                "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/include",
-                "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/src",
-                "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
-                "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/lib/USB_Host_Shield_2.0-master",
-                "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src",
-                "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/cores/arduino",
-                "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/variants/mega",
-                "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src",
-                "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/HID/src",
-                "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SoftwareSerial/src",
-                "C:/Users/Yuki/.platformio/packages/tool-unity",
+                "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/include",
+                "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/src",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
+                "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/lib/USB_Host_Shield_2.0-master",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/cores/arduino",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/variants/mega",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/HID/src",
+                "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SoftwareSerial/src",
+                "C:/Users/USER/.platformio/packages/tool-unity",
                 ""
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/include",
-                    "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/src",
-                    "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
-                    "c:/Users/Yuki/Documents/GitHub/robocon2019_onSeason_remoteControl/lib/USB_Host_Shield_2.0-master",
-                    "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src",
-                    "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/cores/arduino",
-                    "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/variants/mega",
-                    "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src",
-                    "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/HID/src",
-                    "C:/Users/Yuki/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SoftwareSerial/src",
-                    "C:/Users/Yuki/.platformio/packages/tool-unity",
+                    "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/include",
+                    "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/src",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src",
+                    "c:/Users/USER/OneDrive - Otago Polytechnic/Documents/GitHub/robocon2019_onSeason_remoteControl/lib/USB_Host_Shield_2.0-master",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/cores/arduino",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/variants/mega",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/HID/src",
+                    "C:/Users/USER/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SoftwareSerial/src",
+                    "C:/Users/USER/.platformio/packages/tool-unity",
                     ""
                 ]
             },
@@ -48,7 +48,7 @@
             "intelliSenseMode": "clang-x64",
             "cStandard": "c11",
             "cppStandard": "c++11",
-            "compilerPath": "\"C:/Users/Yuki/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe\" -mmcu=atmega2560"
+            "compilerPath": "\"C:/Users/USER/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe\" -mmcu=atmega2560"
         }
     ],
     "version": 4
