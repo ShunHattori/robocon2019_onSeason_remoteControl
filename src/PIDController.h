@@ -1,15 +1,11 @@
-
-// 制御対象: controlled object.
-// 制御量:   controlled variable.
-// 目標値:   desired value.
-// 操作量:   manipulated variable.
+#pragma once
 
 class PIDController
 {
 public:
-  PIDController(double pGain, double iGain, double dGain); // enable all gain and manipulated variable.
-  PIDController(double pGain);                             // enable only propotional gain and manipulated variable.
-
+  PIDController(double pGain, double iGain, double dGain);
+  PIDController(double pGain);                            
+  
   typedef enum gainType
   {
     proportional,

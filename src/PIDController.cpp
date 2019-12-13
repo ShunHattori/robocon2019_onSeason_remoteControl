@@ -1,10 +1,5 @@
 #include "PIDController.h"
 
-// 制御対象: controlled object.
-// 制御量:   controlled variable.
-// 目標値:   desired value.
-// 操作量:   manipulated variable.
-
 PIDController::PIDController(double pGain, double iGain, double dGain)
 {
   p.gain = pGain;

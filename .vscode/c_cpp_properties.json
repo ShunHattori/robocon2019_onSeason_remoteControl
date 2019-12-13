@@ -37,7 +37,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=40003",
+                "PLATFORMIO=40100",
                 "ARDUINO_AVR_ADK",
                 "F_CPU=16000000L",
                 "ARDUINO_ARCH_AVR",

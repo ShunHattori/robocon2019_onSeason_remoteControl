@@ -72,29 +72,6 @@ bool dengerKeybinds();
 void commonArmLogic(int *);
 void sequencedArmLogic(int *, bool);
 void jammingArmLogic(int *);
-/*
-    LeftStick:全方位移動    
-    RightStick:(↑)アームを少し伸ばす
-    R2:右旋回
-    L2:左旋回
-    circle:右側開く
-    triangle:左側開く
-    cross:右側閉じる
-    square:左側閉じる
-    up:アーム上昇
-    right:アーム下げる
-    left:none
-    down:none
-    OPTIONS(toggle):上下展開
-    R1x1:右腕伸ばす
-    R1x2(100ms):右腕縮小
-    L1x1:左腕伸ばす
-    L1x2(100ms):左腕縮小   
-    SHARE + R1:最大速度上昇
-    SHARE + L1:最大速度減少
-    PS:接続
-    PS + OPTIONS:切断
- */
 
 void setup()
 {
@@ -163,18 +140,6 @@ void loop()
       driverPWMOutput[2] > 0 ? 0 : -driverPWMOutput[2],
   };
 
-  /*static unsigned long timer; //ループ時間測定コード・rawPWMの表示タイミングでコントローラ側の遅延を見れる
-  Serial.print(rawPWM[0]);
-  Serial.print("\t");
-  Serial.print(rawPWM[1]);
-  Serial.print("\t");
-  Serial.print(getButtonClickOnce(UP));
-  Serial.print("\t");
-  Serial.print(getButtonClickOnce(DOWN));
-  Serial.print("\t");
-  Serial.println(millis() - timer);
-  timer = millis();*/
-
   /*
       SBからセンサ値取得
       コントローラーとセンサの値から出力値を計算
@@ -205,8 +170,8 @@ void loop()
   {
     VRPID.update(787, analogRead(RobotArmVRPin.VROut));
     int VRPIDPWM = VRPID.getTerm();
-    analogWrite(RobotArmMotorPin.armUpDownCCW, VRPIDPWM > 0 ? VRPIDPWM : 0); //ここをPIDで制御
-    analogWrite(RobotArmMotorPin.armUpDownCW, VRPIDPWM < 0 ? -VRPIDPWM : 0); //ここをPIDで制御
+    analogWrite(RobotArmMotorPin.armUpDownCCW, VRPIDPWM > 0 ? VRPIDPWM : 0);
+    analogWrite(RobotArmMotorPin.armUpDownCW, VRPIDPWM < 0 ? -VRPIDPWM : 0);
   }
   else if (UDArmState == -1)
   {
@@ -218,15 +183,11 @@ void loop()
     digitalWrite(RobotArmMotorPin.armUpDownCW, LOW);
     digitalWrite(RobotArmMotorPin.armUpDownCCW, LOW);
   }
-  /*Serial.print(analogRead(RobotArmVRPin.VROut));
-  Serial.print('\t');
-  Serial.print(VRPID.getTerm());
-  Serial.print('\r');
-  Serial.print('\n');*/
+
   if (getButtonClickOnce(OPTIONS))
     extendToggleFlag = !extendToggleFlag;
   if (extendToggleFlag && !SensorRawData[1])
-  { //展開したい&&上側のリミットスイッチが押されてない
+  {
     MDD1Packet[6] = 45;
     MDD1Packet[7] = 0;
   }
@@ -239,7 +200,7 @@ void loop()
 
   int GenIOPacket[4];
   commonArmLogic(GenIOPacket);
-  jammingArmLogic(GenIOPacket); //overload IOPacket when its enabled
+  jammingArmLogic(GenIOPacket);
   sequencedArmLogic(GenIOPacket, UDArmState);
   communicationStatsLED[2] = GenIO.transmit(4, GenIOPacket);
 }
@@ -469,7 +430,7 @@ void commonArmLogic(int *IOPacket)
   }
 }
 
-void sequencedArmLogic(int *IOPacket, bool UDState) //buttonstate contain CIRCLE AND TRIANGLE DOUBLE PRESS STATE
+void sequencedArmLogic(int *IOPacket, bool UDState)
 {
   static unsigned long userButtonPressedTime[2];
   static unsigned int armLogicState[2];
